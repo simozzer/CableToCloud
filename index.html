@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CableToCloud: Learn Networking by Building It</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header id="topbar">
+    <div class="brand"><span class="logo">◈</span> CableToCloud</div>
+    <div id="level-title"></div>
+    <div class="top-actions">
+      <button id="btn-subnet">Subnet helper</button>
+      <button id="btn-sound">♪ Sound: on</button>
+      <button id="btn-levels">Levels</button>
+      <button id="btn-briefing">Briefing</button>
+      <button id="btn-reset">Restart level</button>
+    </div>
+  </header>
+
+  <main id="layout">
+    <aside id="left">
+      <section class="panel">
+        <h3>Toolbox</h3>
+        <div id="palette"></div>
+      </section>
+      <section class="panel">
+        <h3>Tools</h3>
+        <div id="tools">
+          <button class="tool" data-tool="select"><span class="ti">↖</span> Select / move</button>
+          <button class="tool" data-tool="cable"><span class="ti">⌁</span> Ethernet cable</button>
+          <button class="tool" data-tool="delete"><span class="ti">✕</span> Remove</button>
+        </div>
+        <p class="tip" id="tool-tip"></p>
+      </section>
+      <section class="panel legend">
+        <h3>Status lights</h3>
+        <div><span class="dot ok"></span> Internet reachable</div>
+        <div><span class="dot warn"></span> Address, but no Internet</div>
+        <div><span class="dot bad"></span> Unplugged / no address</div>
+      </section>
+    </aside>
+
+    <section id="center">
+      <div id="canvas-wrap">
+        <svg id="canvas"></svg>
+        <div id="port-picker" hidden></div>
+        <div id="toast"></div>
+      </div>
+      <div id="bottom">
+        <div id="terminal">
+          <div class="pane-head"><span id="term-title">Terminal</span><span class="muted small">type <code>help</code></span></div>
+          <div id="term-out"></div>
+          <div class="term-input-row"><span id="term-prompt">&gt;</span><input id="term-input" autocomplete="off" spellcheck="false"></div>
+        </div>
+        <div id="log">
+          <div class="pane-head">Event log</div>
+          <div id="log-out"></div>
+        </div>
+      </div>
+    </section>
+
+    <aside id="right">
+      <section class="panel">
+        <h3>Objectives <span id="obj-progress"></span></h3>
+        <ol id="objectives"></ol>
+        <button id="btn-hint">Need a hint?</button>
+        <div id="hint-box" hidden></div>
+      </section>
+      <section class="panel" id="inspector"></section>
+    </aside>
+  </main>
+
+  <div id="modal" hidden><div class="modal-card"></div></div>
+
+  <script src="js/util.js"></script>
+  <script src="js/ip.js"></script>
+  <script src="js/model.js"></script>
+  <script src="js/icons.js"></script>
+  <script src="js/sim.js"></script>
+  <script src="js/fx.js"></script>
+  <script src="js/canvas.js"></script>
+  <script src="js/inspector.js"></script>
+  <script src="js/terminal.js"></script>
+  <script src="js/explorer.js"></script>
+  <script src="js/levels.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
