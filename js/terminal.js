@@ -89,7 +89,10 @@
       case 'ipconfig': case 'ifconfig': return kind === 'router' ? showInterfaces(d, p) : ipconfig(d, args, p);
       case 'ping': return ping(d, args, p);
       case 'nslookup': return nslookup(d, args, p);
-      case 'browse': case 'curl': case 'open': return browse(d, args, p);
+      case 'browse': case 'curl': return browse(d, args, p);
+      case 'open': case 'dir': return /^[\\/]/.test(args[0] || '') || cmd === 'dir' ? openShare(d, args, p) : browse(d, args, p);
+      case 'test': return testPort(d, args, p);
+      case 'netstat': return netstat(d, p);
       default: p(`'${cmd}' is not a recognised command. Type help for a list of commands.`, 'err');
     }
   }
@@ -102,6 +105,9 @@
     p('  ping <ip or name>   check whether another device answers (e.g. ping 8.8.8.8)');
     p('  nslookup <name>     ask the DNS server for a name\'s IP address');
     p('  browse <address>    open a web page (e.g. browse www.example.com)');
+    p('  open \\\\<server>     open a shared folder on a file server (e.g. open \\\\files.office)');
+    p('  test <host> <port>  check whether a port is open (e.g. test files.office 445)');
+    p('  netstat             list the ports this device is listening on');
     p('  clear               clear the screen');
   }
 
@@ -277,5 +283,70 @@
       }
     }
     G().recordEvent({ type: 'browse', dev: d.id, host: r.host, ok: r.ok });
+  }
+
+  const FILES = ['Price list.xlsx', 'Staff handbook.pdf', 'Logo.png', 'Meeting notes.docx'];
+
+  async function openShare(d, args, p) {
+    if (!Sim.shareHost(args[0])) { p('Usage: open \\\\<server>   e.g. open \\\\files.office'); return; }
+    const T = G().T;
+    const r = Sim.openShare(T, d.id, args[0]);
+    p(`Opening \\\\${r.host} ...`);
+    await animSteps(r.dns.steps);
+    if (r.stage === 'dns') {
+      p(`  Windows can't find \\\\${r.host}.`, 'err');
+      why(p, Sim.explain(T, r.fail));
+    } else {
+      if (IP.parse(r.host) == null) p(`  DNS: ${r.host} is ${IP.str(r.ip)}`);
+      await Tm.animT(r.conn, 'SMB');
+      if (r.ok) {
+        const srv = G().dev(r.conn.req.dev);
+        p(`  Connected to ${IP.str(r.ip)} on TCP port 445 (SMB)`, 'ok');
+        p(`  Directory of \\\\${r.host}\\Shared   (on ${srv.name})`, 'page');
+        FILES.forEach(f => p(`    ${f}`, 'page'));
+      } else {
+        p(`  Can't open \\\\${r.host}: the network path was not found.`, 'err');
+        why(p, Sim.explain(T, r.fail, r.stage));
+      }
+    }
+    G().recordEvent({ type: 'open', dev: d.id, host: r.host, ok: r.ok });
+  }
+
+  async function testPort(d, args, p) {
+    const port = Number(args[1]);
+    if (!args[0] || !/^\d+$/.test(args[1] || '') || port < 1 || port > 65535) {
+      p('Usage: test <ip address or name> <port>   e.g. test files.office 445');
+      return;
+    }
+    const T = G().T;
+    const r = Sim.testPort(T, d.id, args[0], port);
+    await animSteps(r.dns.steps);
+    if (r.stage === 'dns') {
+      p(`Can't find ${args[0]}.`, 'err');
+      why(p, Sim.explain(T, r.fail));
+    } else {
+      const sv = Sim.svcByPort(r.proto, port);
+      const what = `${r.proto.toUpperCase()} port ${port}${sv ? ' (' + sv.long + ')' : ''} on ${args[0]}${IP.parse(args[0]) == null ? ' [' + IP.str(r.ip) + ']' : ''}`;
+      await Tm.animT(r.conn, String(port));
+      if (r.ok) p(`${what}: OPEN. Something is listening.`, 'ok');
+      else if (r.closed) p(`${what}: CLOSED. The device answered, but nothing is listening on that port.`, 'warn');
+      else p(`${what}: no answer. The device couldn't be reached at all.`, 'err');
+      if (!r.ok) why(p, Sim.explain(T, r.fail, r.stage));
+    }
+    G().recordEvent({ type: 'test', dev: d.id, host: String(args[0]).toLowerCase(), ip: r.ip, port, ok: r.ok, closed: !!r.closed });
+  }
+
+  function netstat(d, p) {
+    const T = G().T, i = T.byDev[d.id][0];
+    const on = Types[d.type].kind === 'host' ? Sim.listening(d) : d.config.dnsProxy ? [Sim.svcByPort('udp', 53)] : [];
+    p('Active listening ports');
+    p('');
+    p('  Proto  Local address          Service');
+    on.forEach(s => p(`  ${s.proto.toUpperCase().padEnd(6)} ${(`${i && i.ip != null ? IP.str(i.ip) : '0.0.0.0'}:${s.port}`).padEnd(22)} ${s.long}`));
+    if (!on.length) {
+      p('  (none)', 'muted');
+      why(p, `${d.name} isn't running any services, so it won't accept connections from other devices. It can still connect out to them.`);
+    }
+    G().recordEvent({ type: 'netstat', dev: d.id, ports: on.map(s => s.port) });
   }
 })();

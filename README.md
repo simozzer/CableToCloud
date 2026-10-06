@@ -10,7 +10,7 @@ Open `index.html` in a web browser. There is nothing to install or build, and it
 ## How it works
 
 - Drag devices from the **Toolbox**, connect them with the **Ethernet cable** tool, and click a device to configure it.
-- Each computer and router has a **terminal**: `ipconfig`, `ping`, `nslookup`, `browse`.
+- Each computer and router has a **terminal**: `ipconfig`, `ping`, `nslookup`, `browse`, `open \\server`, `test <host> <port>`, `netstat`.
 - When something doesn't work, the terminal explains **why**, for example "PC1 sent the packet to its gateway 192.168.1.254, but nothing answered".
 - The **Subnet helper** (top bar) shows how an address block splits into subnets, in decimal and binary.
 - Progress is saved in your browser. Levels unlock in order (tick *Unlock all levels* in the Levels menu for teacher mode).
@@ -28,6 +28,8 @@ Open `index.html` in a web browser. There is nothing to install or build, and it
 9. **Subnetting Basics**: a guided tour of splitting an address range
 10. **Half and Half**: split a /24 into two equal subnets
 11. **Slice the Block**: split one block into subnets of different sizes (VLSM)
+12. **The Shared Drive**: a file server on its own network, found by name through an internal DNS server
+13. **One Server, Many Doors**: ports and services: why the intranet works but the shared drive doesn't
 
 ## Code
 
@@ -37,7 +39,7 @@ Plain HTML, CSS and JavaScript, with no dependencies.
 | --- | --- |
 | `js/ip.js` | IPv4 address and subnet maths |
 | `js/model.js` | Device types and the network data model |
-| `js/sim.js` | The simulation: DHCP, ARP, routing, NAT, port forwarding, DNS, and failure explanations |
+| `js/sim.js` | The simulation: DHCP, ARP, routing, NAT, port forwarding, DNS, services and ports, and failure explanations |
 | `js/levels.js` | Level definitions: setup, briefing, objectives, hints |
 | `js/canvas.js` | SVG workspace, dragging, cabling and packet animation |
 | `js/inspector.js` | Device settings panel |

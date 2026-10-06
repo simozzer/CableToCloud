@@ -22,6 +22,15 @@
   // The ISP side of the WAN link.
   const ISP = { ip: P('203.0.113.1'), mask: IP.maskFromPrefix(24), start: P('203.0.113.42'), end: P('203.0.113.250'), dns: [P('8.8.8.8')] };
 
+  // Services a server can run. Each listens on one well-known port.
+  const SERVICES = [
+    { key: 'web', proto: 'tcp', port: 80, label: 'Web server', long: 'Web server (HTTP)' },
+    { key: 'files', proto: 'tcp', port: 445, label: 'File sharing', long: 'File sharing (SMB)' },
+    { key: 'dns', proto: 'udp', port: 53, label: 'DNS server', long: 'DNS server' },
+  ];
+  const svcByPort = (proto, port) => SERVICES.find(s => s.proto === proto && s.port === port);
+  const listening = d => SERVICES.filter(s => d.config.services && d.config.services[s.key]);
+
   const pk = (d, p) => d + ':' + p;
   const devOf = k => k.slice(0, k.indexOf(':'));
   const kindOf = d => Types[d.type].kind;
@@ -294,11 +303,14 @@
       return { ok: false };
     }
     if (k === 'router' && port === 53 && d.config.dnsProxy) return { ok: true, dns: true, proxy: true };
-    if (k === 'host' && port === 80 && d.config.services && d.config.services.web) return { ok: true, web: true };
+    if (k === 'host') {
+      const s = listening(d).find(x => x.proto === proto && x.port === port);
+      if (s) return { ok: true, [s.key]: true, local: s.key === 'dns' };
+    }
     return { ok: false };
   }
 
-  // A request and its reply: a ping (icmp), a DNS question (udp 53) or a web request (tcp 80).
+  // A request and its reply: a ping (icmp), a DNS question (udp 53), a web request (tcp 80) or a file share (tcp 445).
   // opts.src lets a virtual Internet host (e.g. a customer) be the sender.
   function transact(T, fromId, dst, proto = 'icmp', port, opts = {}) {
     const ctx = { nat: [] };
@@ -343,7 +355,13 @@
       const t = transact(T, fromId, s, 'udp', 53);
       steps.push(t);
       if (!t.ok || (t.svc.proxy && depth > 0)) { first = first || t; continue; }
-      if (t.svc.proxy) {
+      if (t.svc.local) {
+        // An internal DNS server answers from its own records and forwards everything else.
+        const rec = (T.devs[t.req.dev].config.dnsRecords || []).find(x => x.name.toLowerCase() === name);
+        if (rec) return { ok: true, ip: P(rec.ip), steps, server: s, local: true };
+        if (depth > 0) return { ok: false, steps, server: s, fail: { code: 'nxdomain', dev: fromId, name } };
+      }
+      if (t.svc.proxy || t.svc.local) {
         // A home router relays the question to its own DNS server.
         const up = resolve(T, t.req.dev, name, 1);
         steps.push(...up.steps);
@@ -363,6 +381,28 @@
     if (!r.ok) return { ok: false, stage: 'dns', dns: r, host, fail: r.fail };
     const t = transact(T, fromId, r.ip, 'tcp', 80);
     return { ok: t.ok, dns: r, http: t, host, ip: r.ip, fail: t.fail, stage: t.stage };
+  }
+
+  // \\server\share or //server/share → the server's name or address.
+  const shareHost = s => String(s || '').replace(/^[\\/]+/, '').split(/[\\/]/)[0].toLowerCase();
+
+  // Open a shared folder: find the server by name, then connect to TCP port 445 (SMB).
+  function openShare(T, fromId, path) {
+    const host = shareHost(path);
+    const r = resolve(T, fromId, host);
+    if (!r.ok) return { ok: false, stage: 'dns', dns: r, host, fail: r.fail };
+    const t = transact(T, fromId, r.ip, 'tcp', 445);
+    return { ok: t.ok, dns: r, conn: t, host, ip: r.ip, fail: t.fail, stage: t.stage };
+  }
+
+  // Is anything listening on this port? Like Test-NetConnection -Port.
+  function testPort(T, fromId, target, port) {
+    const r = resolve(T, fromId, target);
+    if (!r.ok) return { ok: false, stage: 'dns', dns: r, fail: r.fail };
+    const proto = port === 53 ? 'udp' : 'tcp';
+    const t = transact(T, fromId, r.ip, proto, port);
+    // Only the request reaching the device and being refused means "closed". Anything else is a network fault.
+    return { ok: t.ok, closed: t.stage === 'service', dns: r, conn: t, ip: r.ip, proto, fail: t.fail, stage: t.stage };
   }
 
   // ---------- Explanations ----------
@@ -386,7 +426,7 @@
       }
       case 'netunreach':
         msg = dst != null && IP.isPrivate(dst)
-          ? `The Internet can't deliver to ${s(dst)}: private addresses (10.x, 172.16–31.x, 192.168.x) only exist inside local networks.`
+          ? `The packet for ${s(dst)} was sent out to the Internet, which can't deliver it: private addresses (10.x, 172.16–31.x, 192.168.x) only exist inside local networks. Does the router have an interface in ${s(dst)}'s network?`
           : `Nothing on the Internet answered at ${s(dst)}. Try a known server such as 8.8.8.8 or 1.1.1.1.`;
         break;
       case 'arp':
@@ -404,12 +444,23 @@
             : `${kindOf(d) === 'internet' ? s(dst) : n + ' (' + s(dst) + ')'} is not a DNS server, so nobody answered the question.`;
         } else if (kindOf(d) === 'router') {
           msg = `${n} received a connection for TCP port ${f.port}, but it has no port-forwarding rule sending that port to a server inside, so it refused it.`;
-        } else if (f.port === 80) msg = `Nothing at ${s(dst)} is running a web server.`;
-        else msg = `${n} refused the connection.`;
+        } else if (kindOf(d) === 'internet') {
+          msg = f.port === 80 ? `Nothing at ${s(dst)} is running a web server.` : `${s(dst)} refused the connection on port ${f.port}.`;
+        } else {
+          const sv = svcByPort(f.pkt.proto, f.port);
+          const on = listening(d).map(x => `${x.port} (${x.label.toLowerCase()})`);
+          msg = `${n} (${s(dst)}) got the request, but nothing is listening on ${f.pkt.proto.toUpperCase()} port ${f.port}`
+            + (sv ? `: its ${sv.label.toLowerCase()} service isn't running.` : '.')
+            + (on.length ? ` It is listening on port ${on.join(' and ')}.` : '');
+        }
         break;
       }
       case 'nodns': msg = `${n} has no DNS server set, so it can't turn names into IP addresses.`; break;
-      case 'nxdomain': msg = `The DNS server says the name "${f.name}" doesn't exist. (In this game, try www.example.com.)`; break;
+      case 'nxdomain':
+        msg = /\.office$/.test(f.name)
+          ? `No DNS server has a record for "${f.name}". Internal names only work once someone adds them to the internal DNS server.`
+          : `The DNS server says the name "${f.name}" doesn't exist. (In this game, try www.example.com.)`;
+        break;
       case 'dnsfail': msg = `${n} couldn't get an answer from its DNS server ${s(f.server)}. ` + explain(T, f.inner, f.stage); break;
       case 'upstream': msg = `${n} relays DNS questions to its own DNS server, but that failed. ` + explain(T, f.inner, f.stage); break;
       case 'ttl': msg = 'The packet went round in a loop until it expired.'; break;
@@ -430,5 +481,8 @@
     return t;
   }
 
-  NG.Sim = { build, route, transact, resolve, browse, externalVisit, l2path, explain, usable, dnsServersOf, VIRTUAL, ISP, REMOTE };
+  NG.Sim = {
+    build, route, transact, resolve, browse, openShare, testPort, shareHost, externalVisit, l2path, explain, usable, dnsServersOf,
+    listening, svcByPort, SERVICES, VIRTUAL, ISP, REMOTE,
+  };
 })();

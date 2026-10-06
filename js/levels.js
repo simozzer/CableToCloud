@@ -806,6 +806,193 @@
       </ul>`,
   }));
 
+  // ---------- Office with a Servers network (levels 12 and 13) ----------
+  const SRV = P('10.1.99.0'), FS_IP = P('10.1.99.20');
+  const DEPTS = [
+    { tag: 'sales', name: 'Sales', iface: 'Gi0/1', net: '10.1.10', y: 100 },
+    { tag: 'hr', name: 'HR', iface: 'Gi0/2', net: '10.1.20', y: 300 },
+  ];
+  const deptIf = d => ({ ip: d.net + '.1', mask: '255.255.255.0', dhcp: { enabled: true, start: d.net + '.100', end: d.net + '.199', dns: '10.1.99.53' } });
+  const dns1 = c => tagged(c, 'dns1');
+  const staff = c => DEPTS.map(d => tagged(c, d.tag));
+  const hasRecord = (c, name, ip) => dns1(c).config.dnsRecords.some(r => r.name === name && P(r.ip) === ip);
+  const allCan = (c, f) => staff(c).every(d => f(d).ok);
+  const fromEach = (c, f) => DEPTS.every(dep => H.ev(c, e => e.dev === tagged(c, dep.tag).id && f(e)));
+
+  // fs: optional ready-made file server. Gi0/3 is left unconfigured unless serversIf is given.
+  function serverOffice(net, M, o) {
+    const inet = M.add(net, 'internet', 90, 300, { locked: true });
+    const ifaces = {};
+    DEPTS.forEach(d => { ifaces[d.iface] = deptIf(d); });
+    if (o.serversIf) ifaces['Gi0/3'] = { ip: '10.1.99.1', mask: '255.255.255.0' };
+    const r = M.add(net, 'officerouter', 280, 300, { locked: true, config: { ifaces } });
+    M.connect(net, inet, 'ISP', r, 'Gi0/0', { locked: true });
+    DEPTS.forEach(d => {
+      const sw = M.add(net, 'switch', 520, d.y, { locked: true, name: d.name + '-SW' });
+      const pc = M.add(net, 'pc', 780, d.y, { locked: true, name: d.name + '-PC', tag: d.tag, hostMode: 'dhcp' });
+      M.connect(net, r, d.iface, sw, 'P1', { locked: true });
+      M.connect(net, sw, 'P2', pc, 'eth0', { locked: true });
+    });
+    const sw = M.add(net, 'switch', 520, 500, { locked: true, name: 'Servers-SW' });
+    const dns = M.add(net, 'server', 780, 440, {
+      locked: true, name: 'DNS1', tag: 'dns1', hostMode: 'static',
+      config: { ip: '10.1.99.53', mask: '255.255.255.0', gw: '10.1.99.1', dns: '8.8.8.8', services: { dns: true }, dnsRecords: o.records },
+    });
+    M.connect(net, r, 'Gi0/3', sw, 'P1', { locked: true });
+    M.connect(net, sw, 'P2', dns, 'eth0', { locked: true });
+    if (o.fs) {
+      const fs = M.add(net, 'server', 780, 580, {
+        locked: true, name: 'FS1', tag: 'fs', hostMode: 'static',
+        config: { ip: '10.1.99.20', mask: '255.255.255.0', gw: '10.1.99.1', dns: '10.1.99.53', services: o.fs },
+      });
+      M.connect(net, sw, 'P3', fs, 'eth0', { locked: true });
+    }
+  }
+
+  const OFFICE_PLAN = `
+      <div class="box"><b>Network plan</b>
+        <table class="kv">
+          <tr><th>Gi0/1: Sales</th><td><code>10.1.10.0/24</code>, router <code>10.1.10.1</code>, DHCP</td></tr>
+          <tr><th>Gi0/2: HR</th><td><code>10.1.20.0/24</code>, router <code>10.1.20.1</code>, DHCP</td></tr>
+          <tr><th>Gi0/3: Servers</th><td><code>10.1.99.0/24</code>, router <code>10.1.99.1</code>, static addresses only</td></tr>
+          <tr><th>DNS1</th><td><code>10.1.99.53</code>: the company’s internal DNS server</td></tr>
+          <tr><th>File server</th><td><code>10.1.99.20</code>, name <code>files.office</code></td></tr>
+        </table></div>`;
+
+  // ---------- Level 12: a shared file server ----------
+  const fileServer = c => H.devs(c, 'server').find(d => d.tag !== 'dns1');
+  const onServersNet = (c, d) => { const i = H.ifc(c, d), g = routerIf(c, 'Gi0/3'); return i.up && g && g.up && i.seg === g.seg; };
+
+  Levels.push({
+    id: 'fileserver',
+    title: 'The Shared Drive',
+    subtitle: 'A file server every department can reach',
+    palette: { server: 1 },
+    defaultHostMode: 'none',
+    setup(net, M) { serverOffice(net, M, { records: [{ name: 'dns1.office', ip: '10.1.99.53' }] }); },
+    briefing: `
+      <p>The company keeps its servers on their own <b>Servers</b> network. The internal DNS server, <b>DNS1</b>, is already there, but the
+      router’s Servers port (Gi0/3) was never set up. Staff can’t open any websites. Your job: fix that, then add a <b>shared file server</b>
+      that both Sales and HR can open by name.</p>
+      ${OFFICE_PLAN}
+      <div class="concepts">
+        <div class="concept"><h5>A network for servers</h5>
+          <p>Putting servers on their own network keeps them tidy and easy to protect. Each department reaches them <b>through the router</b>,
+          just as staff PCs reached guest laptops in <i>Staff and Guests</i>.</p></div>
+        <div class="concept"><h5>Servers need fixed addresses</h5>
+          <p>Everyone connects to a server by its address, so it must never change: give servers a <b>static</b> address. A server also needs a
+          <b>default gateway</b>, or its replies to other networks get lost.</p></div>
+        <div class="concept"><h5>Internal DNS</h5>
+          <p>Names like <code>files.office</code> only exist inside the company. DNS1 holds <b>records</b> for them. For any other name, such as
+          <i>www.example.com</i>, DNS1 asks its own DNS server (<code>8.8.8.8</code>) and passes the answer back.</p></div>
+        <div class="concept"><h5>File sharing</h5>
+          <p>A file server shares folders over the <b>SMB</b> protocol, which listens on <b>TCP port 445</b>. Open a share with
+          <code>open \\\\files.office</code>: the two backslashes mean “a shared folder on this server”.</p></div>
+      </div>`,
+    objectives: [
+      { text: 'Configure the router’s <b>Gi0/3</b> (Servers) as <code>10.1.99.1</code> / <code>255.255.255.0</code>',
+        check: c => ifOk(c, 'Gi0/3', '10.1.99.1') },
+      { text: 'Staff can <code>browse www.example.com</code> again (their DNS server is on the Servers network)',
+        check: c => staff(c).every(d => canBrowse(c, d)) },
+      { text: 'Add a <b>server</b> to Servers-SW with the static address <code>10.1.99.20</code> / <code>255.255.255.0</code>',
+        check: c => { const s = fileServer(c); if (!s || s.config.mode !== 'static' || !onServersNet(c, s)) return false; const i = H.ifc(c, s); return i.ip === FS_IP && i.mask === M24 && !i.conflict; } },
+      { text: 'Give it the router as its <b>default gateway</b>, and DNS1 as its DNS server',
+        check: c => { const s = fileServer(c); if (!s || s.config.mode !== 'static') return false; const i = H.ifc(c, s); return i.gw === P('10.1.99.1') && i.dns.includes(P('10.1.99.53')); } },
+      { text: 'Turn on <b>File sharing</b> on the server',
+        check: c => { const s = fileServer(c); return !!s && !!s.config.services.files; } },
+      { text: 'On DNS1, add the record <code>files.office</code> → <code>10.1.99.20</code>',
+        check: c => hasRecord(c, 'files.office', FS_IP) },
+      { text: 'Both departments can open the shared drive',
+        check: c => allCan(c, d => NG.Sim.openShare(c.T, d.id, '\\\\files.office')) },
+      { text: 'Prove it: <code>open \\\\files.office</code> from Sales-PC <b>and</b> HR-PC',
+        check: c => fromEach(c, e => e.type === 'open' && e.ok && e.host === 'files.office') },
+    ],
+    hints: [
+      'Click the router. Under <b>Settings: Gi0/3</b> enter <code>10.1.99.1</code> and <code>255.255.255.0</code>, leave DHCP off, and save. Then try <code>browse www.example.com</code> on a PC.',
+      'Drag a server near Servers-SW and cable it there. Choose <b>static</b>: IP <code>10.1.99.20</code>, mask <code>255.255.255.0</code>, gateway <code>10.1.99.1</code>, DNS <code>10.1.99.53</code>.',
+      'On the server, tick <b>File sharing</b> under Services and press <b>Apply settings</b>. You can already test it by address: <code>open \\\\10.1.99.20</code>.',
+      'Click DNS1. Under <b>DNS records</b> add <code>files.office</code> → <code>10.1.99.20</code>. Then run <code>open \\\\files.office</code> on Sales-PC and on HR-PC.',
+    ],
+    learned: `
+      <ul>
+        <li>Servers often live on their <b>own network</b>. The router connects every department to it.</li>
+        <li>Servers get <b>static</b> addresses so they never move, and a <b>default gateway</b> so their replies reach other networks.</li>
+        <li>An <b>internal DNS server</b> holds records for company names like <code>files.office</code> and forwards other questions to a public DNS server.</li>
+        <li>File sharing uses <b>SMB</b> on <b>TCP port 445</b>. <code>\\\\server</code> means “a shared folder on that server”.</li>
+        <li>If DNS is down, <i>everything</i> by name breaks, even the Internet, which is why DNS1 needed the Servers network to work first.</li>
+      </ul>`,
+  });
+
+  // ---------- Level 13: ports and services ----------
+  const fs13 = c => tagged(c, 'fs');
+
+  Levels.push({
+    id: 'ports',
+    title: 'One Server, Many Doors',
+    subtitle: 'Ports: how one address runs several services',
+    palette: {},
+    setup(net, M) {
+      serverOffice(net, M, {
+        serversIf: true,
+        fs: { web: true, files: false },
+        records: [{ name: 'dns1.office', ip: '10.1.99.53' }, { name: 'files.office', ip: '10.1.99.20' }, { name: 'intranet.office', ip: '10.1.99.20' }],
+      });
+    },
+    briefing: `
+      <p>FS1 now runs two things: the shared drive <i>and</i> the company intranet website. After last night’s power cut the help desk is getting calls:
+      <i>“The intranet works, but the shared drive has gone.”</i> Same server, same address. How can one work and not the other?</p>
+      ${OFFICE_PLAN}
+      <div class="concepts">
+        <div class="concept"><h5>Ports are doors</h5>
+          <p>An IP address gets a packet to the right <b>device</b>. The <b>port number</b> gets it to the right <b>service</b> on that device.
+          One server can run many services, each listening behind its own port.</p></div>
+        <div class="concept"><h5>Well-known ports</h5>
+          <p>Clients know which door to knock on: web is <b>80</b> (HTTP) or <b>443</b> (HTTPS), file sharing is <b>445</b> (SMB),
+          DNS is <b>53</b>, remote login is <b>22</b> (SSH).</p></div>
+        <div class="concept"><h5>Open or closed</h5>
+          <p>If the device answers but no service is listening, the port is <b>closed</b>: the network is fine and the problem is the service.
+          If nothing answers at all, it’s a network problem.</p></div>
+        <div class="concept"><h5>Names point to addresses</h5>
+          <p>DNS turns a name into an <b>address</b>, never a port. Several names can point at the same server; the program you use
+          (browser or file explorer) picks the port.</p></div>
+      </div>
+      <h4>New commands</h4>
+      <ul class="howto">
+        <li><code>test files.office 445</code> knocks on one port and reports open or closed.</li>
+        <li><code>netstat</code>, run on a server, lists the ports it is listening on.</li>
+      </ul>`,
+    objectives: [
+      { text: 'From a PC, <code>browse intranet.office</code>: the intranet works',
+        check: c => H.ev(c, e => e.type === 'browse' && e.ok && e.host === 'intranet.office') },
+      { text: 'From a PC, try <code>open \\\\files.office</code> and read why it fails',
+        check: c => H.ev(c, e => e.type === 'open' && e.host === 'files.office') },
+      { text: 'Knock on both doors: <code>test files.office 80</code> and <code>test files.office 445</code>',
+        check: c => H.ev(c, e => e.type === 'test' && e.ip === FS_IP && e.port === 80) && H.ev(c, e => e.type === 'test' && e.ip === FS_IP && e.port === 445) },
+      { text: 'On FS1, run <code>netstat</code> to see which ports it is listening on',
+        check: c => H.ev(c, e => e.type === 'netstat' && e.dev === fs13(c).id) },
+      { text: 'Start the <b>File sharing</b> service on FS1',
+        check: c => !!fs13(c).config.services.files },
+      { text: 'Give FS1 a third name: on DNS1 add <code>wiki.office</code> → <code>10.1.99.20</code>, then <code>browse wiki.office</code>',
+        check: c => H.ev(c, e => e.type === 'browse' && e.ok && e.host === 'wiki.office') },
+      { text: 'Both departments can reach the shared drive <b>and</b> the intranet',
+        check: c => allCan(c, d => NG.Sim.openShare(c.T, d.id, '\\\\files.office')) && allCan(c, d => NG.Sim.browse(c.T, d.id, 'intranet.office')) },
+    ],
+    hints: [
+      'Click Sales-PC and type <code>browse intranet.office</code>, then <code>open \\\\files.office</code>. The “Why?” line says what FS1 is and isn’t listening on.',
+      'Still on Sales-PC: <code>test files.office 80</code> says OPEN, <code>test files.office 445</code> says CLOSED. Same address, different doors.',
+      'Click FS1 and type <code>netstat</code> (or press the <b>netstat</b> button). Only port 80 is listed. Tick <b>File sharing</b> and press <b>Apply settings</b>.',
+      'Click DNS1 and add <code>wiki.office</code> → <code>10.1.99.20</code>. Then <code>browse wiki.office</code> from a PC: a new name, the same server and the same port 80.',
+    ],
+    learned: `
+      <ul>
+        <li>The <b>IP address</b> finds the device. The <b>port</b> finds the service on that device.</li>
+        <li>Well-known ports: <b>22</b> SSH, <b>53</b> DNS, <b>80</b> HTTP, <b>443</b> HTTPS, <b>445</b> SMB file sharing.</li>
+        <li>A <b>closed</b> port means the device is reachable but the service isn’t running. No answer at all means a network problem.</li>
+        <li><code>netstat</code> shows what a server is listening on. <code>test host port</code> checks it from the client’s side.</li>
+        <li>DNS maps names to <b>addresses</b>, not ports, so many names can share one server.</li>
+        <li>Next, <b>firewall rules</b> will use the same idea: allow or block traffic by address <i>and</i> port.</li>
+      </ul>`,
+  });
 
   NG.Levels = Levels;
 })();

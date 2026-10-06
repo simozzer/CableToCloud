@@ -83,17 +83,21 @@
         ${field('DNS server', 'dns', c.dns, 'e.g. 8.8.8.8')}
         <div class="calc" id="calc"></div>
       </div>
-      ${c.services ? `<h4>Services</h4><label class="check"><input type="checkbox" id="f-web" ${c.services.web ? 'checked' : ''} ${d.lockedConfig ? 'disabled' : ''}> Web server (HTTP, TCP port 80)</label>` : ''}
+      ${c.services ? `<h4>Services</h4>${NG.Sim.SERVICES.map(s => `<label class="check"><input type="checkbox" data-svc="${s.key}"
+        ${c.services[s.key] ? 'checked' : ''} ${d.lockedConfig ? 'disabled' : ''}> ${s.long} <small class="muted">${s.proto.toUpperCase()} port ${s.port}</small></label>`).join('')}` : ''}
       <div class="btn-row"><button class="primary" id="f-save">Apply settings</button></div>
+      ${c.services && c.services.dns ? dnsRecordsHtml(d) : ''}
       <h4>Quick tests <small class="muted">(run in the terminal)</small></h4>
       <div class="btn-row wrap">
         <button data-run="ipconfig">ipconfig</button>
         <button data-run="ping-gw">ping gateway</button>
         <button data-run="ping 8.8.8.8">ping 8.8.8.8</button>
         <button data-run="browse www.example.com">browse example.com</button>
+        ${c.services ? '<button data-run="netstat">netstat</button>' : ''}
       </div>
       ${delBtn(d)}`;
     bindCommon(d);
+    if (c.services && c.services.dns) bindDnsRecords(d);
 
     const mode = () => ($('input[name=mode]:checked', root) || {}).value || 'none';
     const save = $('#f-save', root);
@@ -107,17 +111,58 @@
     const dirty = () => { save.textContent = 'Apply settings •'; update(); };
     $$('input[name=mode]', root).forEach(r => { r.disabled = d.lockedConfig; r.addEventListener('change', dirty); });
     $$('#static-fields input', root).forEach(i => i.addEventListener('input', dirty));
-    if ($('#f-web', root)) $('#f-web', root).addEventListener('change', dirty);
+    $$('[data-svc]', root).forEach(i => i.addEventListener('change', dirty));
     save.disabled = d.lockedConfig;
     save.onclick = () => {
       c.mode = mode();
       $$('[data-path]', root).forEach(i => Model.setPath(c, i.dataset.path, i.value.trim()));
-      if ($('#f-web', root)) c.services.web = $('#f-web', root).checked;
+      $$('[data-svc]', root).forEach(i => { c.services[i.dataset.svc] = i.checked; });
       G().log(`${d.name}: IPv4 settings applied (${{ none: 'not configured', dhcp: 'DHCP', static: 'static' }[c.mode]})`);
       G().recompute();
       I.render();
     };
     update();
+  }
+
+  function dnsRecordsHtml(d) {
+    const recs = d.config.dnsRecords, lock = d.lockedConfig;
+    return `<div class="router-if"><h4>DNS records</h4>
+      <p class="small muted">Names this DNS server answers for itself. Questions about any other name are passed on to its own DNS server.</p>
+      ${recs.length ? `<table class="tbl"><tr><th>Name</th><th>Address</th><th></th></tr>
+        ${recs.map((r, k) => `<tr><td><code>${esc(r.name)}</code></td><td><code>${esc(r.ip)}</code></td>
+          <td>${lock ? '' : `<button class="danger small-btn" data-dns-del="${k}">✕</button>`}</td></tr>`).join('')}</table>`
+        : '<p class="small muted">No records yet.</p>'}
+      ${lock ? '' : `<div class="pf-add">
+        <input id="dns-name" placeholder="name, e.g. files.office" spellcheck="false">
+        <span>→</span>
+        <input id="dns-ip" placeholder="IP address" spellcheck="false">
+        <button id="dns-add">Add</button>
+      </div>
+      <div class="errors" id="dns-err"></div>`}</div>`;
+  }
+
+  function bindDnsRecords(d) {
+    if (d.lockedConfig) return;
+    const recs = d.config.dnsRecords;
+    $$('[data-dns-del]', root).forEach(b => {
+      b.onclick = () => {
+        const r = recs.splice(Number(b.dataset.dnsDel), 1)[0];
+        G().log(`${d.name}: removed DNS record ${r.name}`);
+        G().recompute();
+        I.render();
+      };
+    });
+    $('#dns-add', root).onclick = () => {
+      const nm = $('#dns-name', root).value.trim().toLowerCase().replace(/^[\\/]+/, '').replace(/\.$/, ''), ip = $('#dns-ip', root).value.trim();
+      const err = !/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(nm) ? 'Enter a name with at least one dot, such as files.office.'
+        : IP.parse(ip) == null ? 'Enter the IP address the name should point to.'
+          : recs.some(r => r.name === nm) ? `There is already a record for ${nm}. Remove it first to change it.` : '';
+      if (err) { $('#dns-err', root).textContent = '⚠ ' + err; return; }
+      recs.push({ name: nm, ip });
+      G().log(`${d.name}: DNS record ${nm} → ${ip}`);
+      G().recompute();
+      I.render();
+    };
   }
 
   function hostStatus(d) {
@@ -138,6 +183,10 @@
     rows.push(['Default gateway', i.gw != null ? `<code>${IP.str(i.gw)}</code>` : '<span class="muted">none</span>']);
     rows.push(['DNS server', i.dns.length ? i.dns.map(x => `<code>${IP.str(x)}</code>`).join(', ') : '<span class="muted">none</span>']);
     rows.push(['Internet', G().status[d.id] === 'ok' ? '<span class="good">✓ reachable</span>' : '<span class="bad">✗ not reachable</span>']);
+    if (d.config.services) {
+      const on = NG.Sim.listening(d);
+      rows.push(['Listening on', on.length ? on.map(s => `${esc(s.label)} <small class="muted">${s.proto.toUpperCase()} ${s.port}</small>`).join('<br>') : '<span class="muted">no services</span>']);
+    }
     let h = kv(rows);
     if (d.config.mode === 'static' && i.errors.length) h += `<div class="errors">${i.errors.map(e => `<div>⚠ ${esc(e)}</div>`).join('')}</div>`;
     return h;

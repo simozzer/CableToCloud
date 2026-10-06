@@ -15,7 +15,10 @@
   const Types = {
     pc: { label: 'PC', kind: 'host', prefix: 'PC', ports: ['eth0'], desc: 'A desktop computer with one Ethernet port.', cfg: m => hostCfg(m) },
     laptop: { label: 'Laptop', kind: 'host', prefix: 'Laptop', ports: ['eth0'], desc: 'A laptop with one Ethernet port.', cfg: m => hostCfg(m) },
-    server: { label: 'Server', kind: 'host', prefix: 'Server', ports: ['eth0'], desc: 'A server. It can run a web server.', cfg: m => Object.assign(hostCfg(m), { services: { web: false } }) },
+    server: {
+      label: 'Server', kind: 'host', prefix: 'Server', ports: ['eth0'], desc: 'A server. It can run web, file-sharing and DNS services.',
+      cfg: m => Object.assign(hostCfg(m), { services: { web: false, files: false, dns: false }, dnsRecords: [] }),
+    },
     printer: { label: 'Printer', kind: 'host', prefix: 'Printer', ports: ['eth0'], desc: 'A network printer.', cfg: m => hostCfg(m) },
     switch: { label: 'Switch', kind: 'switch', prefix: 'Switch', ports: range('P', 8), desc: 'An 8-port switch: joins devices into one local network.', cfg: () => ({}) },
     homerouter: {
