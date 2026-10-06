@@ -208,7 +208,12 @@ button.danger { background: transparent; border-color: #7f1d1d; color: var(--bad
 
 /* Device colours */
 .t-pc { --c: #3b82f6; }
-.t-laptop { --c: #14b8a6; }
+.t-laptop, .t-vmhost { --c: #14b8a6; }
+.t-vm { --c: #e879f9; }
+.ic-virtual { stroke: #fff; stroke-dasharray: 4 3; stroke-width: 1.4; fill-opacity: .55; }
+.ic-vmtext { fill: #f5d0fe; font: 700 11px var(--mono); text-anchor: middle; }
+.ic-vmwin { fill: #e879f9; stroke: #0b1a33; stroke-width: 1; opacity: .9; }
+.link.virt .link-line { stroke: #c084fc; stroke-dasharray: 3 5; stroke-width: 2.5; }
 .t-server { --c: #8b5cf6; }
 .t-printer { --c: #64748b; }
 .t-switch, .t-mswitch { --c: #22c55e; }

@@ -17,7 +17,7 @@
     laptop: { label: 'Laptop', kind: 'host', prefix: 'Laptop', ports: ['eth0'], desc: 'A laptop with one Ethernet port.', cfg: m => hostCfg(m) },
     server: {
       label: 'Server', kind: 'host', prefix: 'Server', ports: ['eth0'], desc: 'A server. It can run web, file-sharing and DNS services.',
-      cfg: m => Object.assign(hostCfg(m), { services: { web: false, files: false, dns: false }, dnsRecords: [] }),
+      cfg: m => Object.assign(hostCfg(m), { services: { web: false, files: false, dns: false, ssh: false }, dnsRecords: [], sshAllow: '' }),
     },
     printer: { label: 'Printer', kind: 'host', prefix: 'Printer', ports: ['eth0'], desc: 'A network printer.', cfg: m => hostCfg(m) },
     switch: { label: 'Switch', kind: 'switch', prefix: 'Switch', ports: range('P', 8), desc: 'An 8-port switch: joins devices into one local network.', cfg: () => ({}) },
@@ -51,6 +51,30 @@
         ifaces: { 'Gi0/0': wanIf(), 'Gi0/1': lanIf('', ''), 'Gi0/2': lanIf('', ''), 'Gi0/3': lanIf('', '') },
         nat: true, dnsProxy: false, portForwards: [], acl: [],
       }),
+    },
+    // A laptop running a hypervisor (like VirtualBox). Inside it are three virtual networks that VMs plug into:
+    // bridged ports join the laptop's own network port, NAT hides VMs behind the laptop, host-only goes nowhere else.
+    vmhost: {
+      label: 'VM Host Laptop', kind: 'router', prefix: 'Laptop', ports: ['eth0', 'br1', 'br2', 'nat1', 'nat2', 'ho1', 'ho2'],
+      desc: 'A laptop running virtual machines. Its hypervisor provides bridged, NAT and host-only networks.',
+      ifaces: [
+        { name: 'eth0', ports: ['eth0', 'br1', 'br2'], role: 'wan' },
+        { name: 'NAT', ports: ['nat1', 'nat2'], role: 'lan' },
+        { name: 'Host-only', ports: ['ho1', 'ho2'], role: 'lan', hostOnly: true },
+      ],
+      cfg: () => ({
+        ifaces: {
+          eth0: wanIf(),
+          NAT: lanIf('10.0.2.2', '255.255.255.0', { enabled: true, start: '10.0.2.15', end: '10.0.2.30', dns: '8.8.8.8' }),
+          'Host-only': lanIf('192.168.56.1', '255.255.255.0', { enabled: true, start: '192.168.56.101', end: '192.168.56.199', dns: '' }),
+        },
+        nat: true, dnsProxy: false, portForwards: [], acl: [],
+      }),
+    },
+    vm: {
+      label: 'Virtual Machine', kind: 'host', prefix: 'VM', ports: ['eth0'],
+      desc: 'A virtual machine: a whole computer running inside another one.',
+      cfg: m => Object.assign(hostCfg(m), { services: { web: false, files: false, dns: false, ssh: false }, dnsRecords: [], sshAllow: '' }),
     },
     internet: { label: 'Internet', kind: 'internet', prefix: 'Internet', ports: ['ISP'], desc: 'Your Internet Service Provider and the rest of the Internet.', cfg: () => ({}) },
   };

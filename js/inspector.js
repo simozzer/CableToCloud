@@ -14,6 +14,7 @@
     const d = sel && sel.dev && G().dev(sel.dev);
     if (!d) { root.innerHTML = empty(); return; }
     if (d.type === 'mswitch') renderMSwitch(d);
+    else if (d.type === 'vmhost') renderVmHost(d);
     else ({ host: renderHost, router: renderRouter, switch: renderSimple, internet: renderSimple })[Types[d.type].kind](d);
     I.renderStatus();
   };
@@ -70,6 +71,7 @@
     const c = d.config;
     const radio = (v, label) => `<label class="radio"><input type="radio" name="mode" value="${v}" ${c.mode === v ? 'checked' : ''}> ${label}</label>`;
     root.innerHTML = head(d) + `
+      ${d.type === 'vm' ? vmAdapterHtml(d) : ''}
       <h4>IPv4 settings</h4>
       ${d.lockedConfig ? '<p class="note">These settings are locked in this level.</p>' : ''}
       <div class="radios">
@@ -85,7 +87,9 @@
         <div class="calc" id="calc"></div>
       </div>
       ${c.services ? `<h4>Services</h4>${NG.Sim.SERVICES.map(s => `<label class="check"><input type="checkbox" data-svc="${s.key}"
-        ${c.services[s.key] ? 'checked' : ''} ${d.lockedConfig ? 'disabled' : ''}> ${s.long} <small class="muted">${s.proto.toUpperCase()} port ${s.port}</small></label>`).join('')}` : ''}
+        ${c.services[s.key] ? 'checked' : ''} ${d.lockedConfig ? 'disabled' : ''}> ${s.long} <small class="muted">${s.proto.toUpperCase()} port ${s.port}</small></label>`).join('')}
+        <div class="fields">${field('Allow SSH from', 'sshAllow', c.sshAllow || '', 'anyone (or e.g. 10.1.99.10)')}</div>
+        ${c.sshAllow && !NG.Sim.parseRange(c.sshAllow) ? '<div class="errors">⚠ “Allow SSH from” isn’t a valid address or network, so nobody can log in.</div>' : ''}` : ''}
       <div class="btn-row"><button class="primary" id="f-save">Apply settings</button></div>
       ${c.services && c.services.dns ? dnsRecordsHtml(d) : ''}
       <h4>Quick tests <small class="muted">(run in the terminal)</small></h4>
@@ -99,6 +103,7 @@
       ${delBtn(d)}`;
     bindCommon(d);
     if (c.services && c.services.dns) bindDnsRecords(d);
+    if (d.type === 'vm') bindVmAdapter(d);
 
     const mode = () => ($('input[name=mode]:checked', root) || {}).value || 'none';
     const save = $('#f-save', root);
@@ -113,6 +118,7 @@
     $$('input[name=mode]', root).forEach(r => { r.disabled = d.lockedConfig; r.addEventListener('change', dirty); });
     $$('#static-fields input', root).forEach(i => i.addEventListener('input', dirty));
     $$('[data-svc]', root).forEach(i => i.addEventListener('change', dirty));
+    $$('[data-path=sshAllow]', root).forEach(i => { i.disabled = d.lockedConfig; i.addEventListener('input', dirty); });
     save.disabled = d.lockedConfig;
     save.onclick = () => {
       c.mode = mode();
@@ -336,15 +342,16 @@
       b.onclick = () => { const [r] = rules.splice(Number(b.dataset.aclDel), 1); changed(`removed access rule “${S.ruleText(r)}”`); };
     });
     const protoSel = $('#acl-proto', root), portIn = $('#acl-port', root);
-    const syncPort = () => { const on = protoSel.value === 'tcp' || protoSel.value === 'udp'; portIn.disabled = !on; if (!on) portIn.value = ''; };
-    protoSel.onchange = syncPort;
-    syncPort();
     $('#acl-add', root).onclick = () => {
       const norm = v => { v = v.trim().toLowerCase(); return v === '' ? 'any' : v; };
       const src = norm($('#acl-src', root).value), dst = norm($('#acl-dst', root).value), proto = protoSel.value, port = portIn.value.trim();
       const bad = v => { const r = S.parseRange(v); return !r ? `“${v}” isn’t valid. Use any, an address (10.1.99.30) or a network (10.1.20.0/24).`
-        : r.aligned === false ? `“${v}” isn’t the start of a network. Did you mean ${IP.str(r.net)}/${IP.prefix(r.mask)}?` : ''; };
-      const err = bad(src) || bad(dst) || (port && !(/^\d+$/.test(port) && +port >= 1 && +port <= 65535) ? 'Enter a port from 1 to 65535, or leave it empty for any port.' : '');
+        : r.aligned === false ? `“${v}” isn’t the start of a network. Did you mean ${IP.str(r.net)}/${IP.prefix(r.mask)}?`
+          // A bare x.x.x.0 is almost always a network written without its prefix, which would match only that one address.
+          : !v.includes('/') && v !== 'any' && (r.net & 255) === 0 ? `“${v}” on its own means just that one address. For the whole network, add the prefix, e.g. ${v}/24.` : ''; };
+      const err = bad(src) || bad(dst)
+        || (port && !(/^\d+$/.test(port) && +port >= 1 && +port <= 65535) ? 'Enter a port from 1 to 65535, or leave it empty for any port.' : '')
+        || (port && proto !== 'tcp' && proto !== 'udp' ? `Ports belong to TCP or UDP. Choose one in the protocol box (file sharing on ${port === '445' ? '445 is TCP' : 'a port is usually TCP'}), or clear the port.` : '');
       if (err) { $('#acl-err', root).textContent = '⚠ ' + err; return; }
       const r = { action: $('#acl-action', root).value, src, dst, proto, port };
       rules.push(r);
@@ -397,6 +404,58 @@
       return [p, `${esc(name(o.dev))} <small>${esc(o.port)}</small>`];
     });
     return '<p class="small">A switch joins devices into one local network. It needs no IP address.</p>' + kv(rows);
+  }
+
+  // ---------- Virtual machines ----------
+
+  const VM_MODES = [
+    { key: 'br', label: 'Bridged', text: 'joins the laptop’s own network, like another computer on the switch' },
+    { key: 'nat', label: 'NAT', text: 'hidden behind the laptop, which shares its address (like a home router)' },
+    { key: 'ho', label: 'Host-only', text: 'a private network with just the laptop and its VMs: no Internet' },
+  ];
+  const vmLink = d => G().net.links.find(l => l.a.dev === d.id || l.b.dev === d.id);
+  const vmMode = d => {
+    const l = vmLink(d), o = l && Model.peer(l, d.id);
+    return o && (VM_MODES.find(m => o.port.startsWith(m.key)) || {}).key;
+  };
+
+  function vmAdapterHtml(d) {
+    const cur = vmMode(d);
+    return `<h4>Network adapter <small class="muted">(a hypervisor setting)</small></h4>
+      <div class="radios">${VM_MODES.map(m => `<label class="radio"><input type="radio" name="vm-mode" value="${m.key}" ${cur === m.key ? 'checked' : ''} ${d.lockedConfig ? 'disabled' : ''}>
+        <b>${m.label}</b>: <small>${m.text}</small></label>`).join('')}</div>`;
+  }
+
+  // Re-plug the VM's virtual cable into a free port of the chosen network on its host.
+  function bindVmAdapter(d) {
+    $$('input[name=vm-mode]', root).forEach(r => r.addEventListener('change', () => {
+      const l = vmLink(d);
+      if (!l) return;
+      const end = l.a.dev === d.id ? l.b : l.a, host = G().dev(end.dev);
+      const port = host.ports.find(p => p.startsWith(r.value) && !Model.linkAt(G().net, host.id, p));
+      if (!port) { G().toast(`${host.name} has no free ${r.value} port.`); I.render(); return; }
+      end.port = port;
+      G().log(`${d.name}: network adapter set to ${VM_MODES.find(m => m.key === r.value).label}`);
+      G().recompute();
+      I.render();
+    }));
+  }
+
+  function renderVmHost(d) {
+    const feat = G().level.features || {};
+    root.innerHTML = head(d) + `
+      <div class="box small"><b>Inside this laptop</b> its hypervisor runs three virtual networks:
+        <table class="kv">
+          <tr><th>Bridged</th><td>VMs share the laptop’s network port and join its network directly.</td></tr>
+          <tr><th>NAT</th><td><code>10.0.2.0/24</code>. VMs reach out through the laptop’s address. Nothing outside can reach them.</td></tr>
+          <tr><th>Host-only</th><td><code>192.168.56.0/24</code>. Only the laptop and its VMs. Never routed anywhere.</td></tr>
+        </table>
+        Choose each VM’s network in the VM’s own settings.</div>
+      ${feat.portForward ? portForwardHtml(d) : ''}
+      <h4>Quick tests</h4>
+      <div class="btn-row wrap"><button data-run="ipconfig">show interfaces</button><button data-run="ping 8.8.8.8">ping 8.8.8.8</button></div>`;
+    bindCommon(d);
+    if (feat.portForward) bindPortForward(d);
   }
 
   function renderMSwitch(d) {

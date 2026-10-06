@@ -161,8 +161,9 @@
       b = Object.assign({}, b, { x: b.x + nx, y: b.y + ny });
     }
     const wan = a.type === 'internet' || b.type === 'internet';
+    const virt = a.type === 'vm' || b.type === 'vm';
     const sel = G.sel && G.sel.link === l.id;
-    return `<g class="link ${wan ? 'wan' : ''} ${sel ? 'sel' : ''}" data-link="${l.id}">
+    return `<g class="link ${wan ? 'wan' : ''} ${virt ? 'virt' : ''} ${sel ? 'sel' : ''}" data-link="${l.id}">
       <line class="link-hit" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>
       <line class="link-line" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>
       ${[[a, b, l.a.port], [b, a, l.b.port]].map(([x, y, port]) => { const t = portText(x, port); return portLabel(labelPos(x, y, t.text), t.text, t.cls); }).join('')}

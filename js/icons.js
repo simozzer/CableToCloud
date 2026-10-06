@@ -22,6 +22,17 @@
     <rect class="ic-detail" x="-6" y="10.5" width="12" height="2" rx="1"/>
   </g>`;
 
+  // A laptop running a hypervisor: two little VM windows on its screen.
+  I.vmhost = () => I.laptop().replace('</g>', `
+    <rect class="ic-vmwin" x="-14" y="-16" width="15" height="10" rx="1"/><rect class="ic-vmwin" x="-3" y="-10" width="15" height="10" rx="1"/></g>`);
+
+  // A virtual machine: a computer drawn with a dashed outline.
+  I.vm = () => `<g class="ic">
+    <rect class="ic-body ic-virtual" x="-24" y="-22" width="48" height="34" rx="4"/>
+    <rect class="ic-screen" x="-19" y="-17" width="38" height="24" rx="1.5"/>
+    <text class="ic-vmtext" y="0">VM</text>
+  </g>`;
+
   I.server = () => `<g class="ic">
     <rect class="ic-body" x="-19" y="-26" width="38" height="50" rx="3"/>
     ${[0, 1, 2].map(k => `

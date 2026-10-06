@@ -27,7 +27,15 @@
     { key: 'web', proto: 'tcp', port: 80, label: 'Web server', long: 'Web server (HTTP)' },
     { key: 'files', proto: 'tcp', port: 445, label: 'File sharing', long: 'File sharing (SMB)' },
     { key: 'dns', proto: 'udp', port: 53, label: 'DNS server', long: 'DNS server' },
+    { key: 'ssh', proto: 'tcp', port: 22, label: 'Remote login', long: 'Remote login (SSH)' },
   ];
+  // A server's own SSH setting ("host firewall"): which addresses may log in. Empty = anyone.
+  const sshAllowed = (d, ip) => {
+    const s = String(d.config.sshAllow || '').trim();
+    if (!s) return true;
+    const r = parseRange(s);
+    return !!r && IP.same(ip, r.net, r.mask);
+  };
   const svcByPort = (proto, port) => SERVICES.find(s => s.proto === proto && s.port === port);
   const listening = d => SERVICES.filter(s => d.config.services && d.config.services[s.key]);
 
@@ -113,7 +121,7 @@
     net.devices.forEach(d => ifaceDefs(d).forEach(def => {
       const up = def.ports.some(p => T.linked[pk(d.id, p)]);
       const i = {
-        key: d.id + '/' + def.name, dev: d.id, name: def.name, role: def.role, kind: kindOf(d), ports: def.ports,
+        key: d.id + '/' + def.name, dev: d.id, name: def.name, role: def.role, kind: kindOf(d), ports: def.ports, hostOnly: !!def.hostOnly,
         up, seg: up ? find(pk(d.id, def.ports[0])) : null,
         ip: null, mask: null, gw: null, dns: [], source: 'none', errors: [],
       };
@@ -365,6 +373,8 @@
       if (inIf && kind === 'host') return fail(res, 'notrouter', devId);
       const r = route(T, devId, pkt.dst);
       if (r.err) return fail(res, r.err, devId, { iface: r.iface });
+      // A host-only network is private to the host and its VMs: the hypervisor never routes it anywhere.
+      if (inIf && inIf !== r.iface && (inIf.hostOnly || r.iface.hostOnly)) return fail(res, 'hostonly', devId, { iface: inIf.hostOnly ? inIf : r.iface });
       // Access rules check new connections passing through the router. Replies are let back automatically.
       const acl = kind === 'router' && inIf && !ctx.reply && T.devs[devId].config.acl;
       if (acl && acl.length) {
@@ -397,6 +407,7 @@
     if (k === 'router' && port === 53 && d.config.dnsProxy) return { ok: true, dns: true, proxy: true };
     if (k === 'host') {
       const s = listening(d).find(x => x.proto === proto && x.port === port);
+      if (s && s.key === 'ssh' && !sshAllowed(d, req.pkt.src)) return { ok: false, hostfw: true };
       if (s) return { ok: true, [s.key]: true, local: s.key === 'dns' };
     }
     return { ok: false };
@@ -413,7 +424,7 @@
     if (!req.ok) { out.stage = 'request'; out.fail = req.fail; return out; }
     const dport = req.pkt.port;
     out.svc = service(T, req, proto, dport);
-    if (!out.svc.ok) { out.stage = 'service'; out.fail = { code: 'refused', dev: req.dev, port: dport, pkt: Object.assign({}, req.pkt) }; return out; }
+    if (!out.svc.ok) { out.stage = 'service'; out.fail = { code: out.svc.hostfw ? 'hostfw' : 'refused', dev: req.dev, port: dport, pkt: Object.assign({}, req.pkt) }; return out; }
     ctx.reply = true;
     const rep = walk(T, req.dev, { src: req.pkt.dst, dst: req.pkt.src, proto, port: dport }, ctx);
     out.rep = rep;
@@ -575,6 +586,8 @@
         }
         break;
       }
+      case 'hostfw': msg = `${n} runs SSH, but its own settings only accept logins from ${T.devs[f.dev].config.sshAllow}, and ${s(f.pkt.src)} isn't in that range. (This check happens on the server itself, so it works even inside one subnet, where the router never sees the traffic.)`; break;
+      case 'hostonly': msg = `${n}'s host-only network (${IP.cidr(i.ip, i.mask)}) is private to ${n} and its virtual machines. The hypervisor never routes it to any other network, including the Internet.`; break;
       case 'ttl': msg = 'The packet went round in a loop until it expired.'; break;
       default: msg = 'The reply arrived somewhere unexpected.';
     }
@@ -595,6 +608,6 @@
 
   NG.Sim = {
     build, route, transact, resolve, browse, openShare, testPort, shareHost, externalVisit, l2path, explain, usable, dnsServersOf,
-    listening, svcByPort, parseRange, ruleText, checkAcl, parseVlans, portVlan, SERVICES, VIRTUAL, ISP, REMOTE,
+    listening, svcByPort, sshAllowed, parseRange, ruleText, checkAcl, parseVlans, portVlan, SERVICES, VIRTUAL, ISP, REMOTE,
   };
 })();

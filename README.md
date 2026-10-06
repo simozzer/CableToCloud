@@ -10,7 +10,7 @@ Open `index.html` in a web browser. There is nothing to install or build, and it
 ## How it works
 
 - Drag devices from the **Toolbox**, connect them with the **Ethernet cable** tool, and click a device to configure it.
-- Each computer and router has a **terminal**: `ipconfig`, `ping`, `nslookup`, `browse`, `open \\server`, `test <host> <port>`, `netstat`.
+- Each computer and router has a **terminal**: `ipconfig`, `ping`, `nslookup`, `browse`, `open \\server`, `test <host> <port>`, `netstat`, `ssh <host>`.
 - When something doesn't work, the terminal explains **why**, for example "PC1 sent the packet to its gateway 192.168.1.254, but nothing answered".
 - The **Subnet helper** (top bar) shows how an address block splits into subnets, in decimal and binary.
 - Progress is saved in your browser. Levels unlock in order (tick *Unlock all levels* in the Levels menu for teacher mode).
@@ -35,6 +35,8 @@ Open `index.html` in a web browser. There is nothing to install or build, and it
 16. **Guests Welcome**: guest Wi-Fi that reaches the Internet and nothing else
 17. **Demilitarised Zone**: move the public web server into a DMZ
 18. **Two Floors, One Cable**: VLANs, access ports and trunks on managed switches
+19. **Virtual Lab**: virtual machines on bridged, NAT and host-only networks
+20. **The Jump Box**: SSH, a jump host, and host firewalls inside a subnet
 
 ## Code
 
@@ -55,4 +57,4 @@ Plain HTML, CSS and JavaScript, with no dependencies.
 
 ## Ideas for the future
 
-Virtual machines (bridged, NAT, host-only), SSH and jump hosts, containers, SSH tunnels and cloud networking (VPCs, security groups, load balancers).
+Containers (bridge networks and published ports), SSH tunnels and cloud networking (VPCs, security groups, load balancers).

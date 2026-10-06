@@ -20,7 +20,7 @@
     Tm.render();
   };
 
-  Tm.reset = function () { Tm.hist = {}; Tm.devId = null; Tm.busy = false; Tm.render(); };
+  Tm.reset = function () { Tm.hist = {}; Tm.devId = null; Tm.busy = false; sessions.length = 0; Tm.render(); };
 
   Tm.attach = function (id) {
     if (id && !Tm.hist[id]) {
@@ -43,7 +43,8 @@
       input.disabled = true;
       return;
     }
-    titleEl.textContent = 'Terminal: ' + d.name;
+    const s = Tm.sessionOf(d.id), from = s && G().dev(s.from);
+    titleEl.textContent = 'Terminal: ' + d.name + (from ? ` (SSH from ${from.name})` : '');
     promptEl.textContent = d.name + '>';
     input.disabled = Tm.busy;
     out.innerHTML = Tm.hist[d.id].map(lineHtml).join('');
@@ -92,6 +93,8 @@
       case 'browse': case 'curl': return browse(d, args, p);
       case 'open': case 'dir': return /^[\\/]/.test(args[0] || '') || cmd === 'dir' ? openShare(d, args, p) : browse(d, args, p);
       case 'test': return testPort(d, args, p);
+      case 'ssh': return ssh(d, args, p);
+      case 'exit': case 'logout': return exitSsh(d, p);
       case 'netstat': return netstat(d, p);
       default: p(`'${cmd}' is not a recognised command. Type help for a list of commands.`, 'err');
     }
@@ -108,6 +111,8 @@
     p('  open \\\\<server>     open a shared folder on a file server (e.g. open \\\\files.office)');
     p('  test <host> <port>  check whether a port is open (e.g. test files.office 445)');
     p('  netstat             list the ports this device is listening on');
+    p('  ssh <host>          log in to another computer (e.g. ssh jump1.office)');
+    p('  exit                leave an SSH session');
     p('  clear               clear the screen');
   }
 
@@ -335,6 +340,45 @@
       if (!r.ok) why(p, Sim.explain(T, r.fail, r.stage));
     }
     G().recordEvent({ type: 'test', dev: d.id, host: String(args[0]).toLowerCase(), ip: r.ip, port, ok: r.ok, closed: !!r.closed, code: r.fail && r.fail.code });
+  }
+
+  // SSH sessions: logging in moves the terminal to the remote computer; exit comes back.
+  const sessions = [];
+  Tm.sessionOf = id => sessions.find(s => s.to === id);
+
+  async function ssh(d, args, p) {
+    const target = String(args[0] || '').replace(/^.*@/, '').toLowerCase();
+    if (!target) { p('Usage: ssh <name or address>   e.g. ssh jump1.office'); return; }
+    const T = G().T;
+    const r = Sim.testPort(T, d.id, target, 22);
+    await animSteps(r.dns.steps);
+    if (r.stage === 'dns') {
+      p(`ssh: Could not resolve hostname ${target}`, 'err');
+      why(p, Sim.explain(T, r.fail));
+    } else {
+      await Tm.animT(r.conn, 'SSH');
+      if (r.ok) {
+        const remote = G().dev(r.conn.req.dev);
+        p(`Connected to ${remote.name} (${IP.str(r.ip)}) on TCP port 22. The connection is encrypted.`, 'ok');
+        sessions.push({ from: d.id, to: remote.id });
+        G().recordEvent({ type: 'ssh', dev: d.id, to: remote.id, ok: true });
+        Tm.attach(remote.id);
+        printer(remote.id)(`Welcome to ${remote.name}. You are logged in from ${d.name}. Type exit to go back.`, 'ok');
+        return;
+      }
+      p(`ssh: connect to host ${target} port 22: ${r.closed ? 'Connection refused' : 'Connection timed out'}`, 'err');
+      why(p, Sim.explain(T, r.fail, r.stage));
+    }
+    G().recordEvent({ type: 'ssh', dev: d.id, ip: r.ip, ok: false, code: r.fail && r.fail.code });
+  }
+
+  function exitSsh(d, p) {
+    const k = sessions.map(s => s.to).lastIndexOf(d.id);
+    if (k < 0) { p('Not logged in to anything: exit only leaves an SSH session.', 'muted'); return; }
+    const [s] = sessions.splice(k, 1);
+    p('logout', 'muted');
+    Tm.attach(s.from);
+    printer(s.from)(`Connection to ${d.name} closed.`, 'muted');
   }
 
   function netstat(d, p) {

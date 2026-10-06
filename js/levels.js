@@ -1048,8 +1048,8 @@
       </div>
       <p class="muted small">Click the router: <b>Access rules</b> is at the top of its settings. Leave the port empty to mean any port.</p>`,
     objectives: [
-      { text: 'From Sales-PC, <code>open \\\\hr.office</code>. It works, and it shouldn’t!',
-        check: c => H.ev(c, e => e.type === 'open' && e.ok && e.host === 'hr.office' && e.dev === tagged(c, 'sales').id) },
+      { text: 'From Sales-PC, try <code>open \\\\hr.office</code>. Before any rules, it works, and it shouldn’t!',
+        check: c => H.ev(c, e => e.type === 'open' && e.host === 'hr.office' && e.dev === tagged(c, 'sales').id) },
       { text: 'Sales can no longer open <code>\\\\hr.office</code>',
         check: c => blocked(share(c, 'sales', 'hr.office')) },
       { text: 'HR can still open <code>\\\\hr.office</code>',
@@ -1060,8 +1060,9 @@
         check: c => staff(c).every(d => canBrowse(c, d)) },
       { text: 'From Sales-PC, <code>test hr.office 445</code> now says <b>FILTERED</b>',
         check: c => H.ev(c, e => e.type === 'test' && e.dev === tagged(c, 'sales').id && e.ip === HRFS_IP && e.port === 445 && e.code === 'acl') },
-      { text: 'Experiment: move your deny rule <b>above</b> the HR permit and watch HR get blocked too. Then put it back',
-        check: c => H.ev(c, e => (e.type === 'open' || e.type === 'test') && e.dev === tagged(c, 'hr').id && e.code === 'acl' && (e.host === 'hr.office' || e.ip === HRFS_IP)) },
+      { text: 'Experiment: move your deny rule <b>above</b> the HR permit, try <code>open \\\\hr.office</code> on HR-PC and watch it get blocked too. Then put it back',
+        check: c => H.ev(c, e => ['open', 'test', 'ping'].includes(e.type) && e.dev === tagged(c, 'hr').id && e.code === 'acl'
+          && (e.host === 'hr.office' || e.ip === HRFS_IP || e.dst === HRFS_IP)) },
     ],
     hints: [
       'Click Sales-PC and run <code>open \\\\hr.office</code>. Then click the router and find <b>Access rules</b>.',
@@ -1206,8 +1207,8 @@
           DNS server instead, so they never learn internal names.</p></div>
       </div>`,
     objectives: [
-      { text: 'From Guest-Laptop, <code>open \\\\files.office</code>. It works, and it shouldn’t!',
-        check: c => H.ev(c, e => e.type === 'open' && e.ok && e.dev === tagged(c, 'guest').id) },
+      { text: 'From Guest-Laptop, try <code>open \\\\files.office</code>. Before any rules, it works, and it shouldn’t!',
+        check: c => H.ev(c, e => e.type === 'open' && e.dev === tagged(c, 'guest').id) },
       { text: 'Guests can’t reach the file server or the intranet',
         check: c => blocked(tx(c, 'guest', P('10.1.99.20'), 'tcp', 445)) && blocked(tx(c, 'guest', P('10.1.99.20'), 'tcp', 80)) },
       { text: 'Guests can’t reach staff computers (try <code>ping</code> to Staff-PC)',
@@ -1292,8 +1293,8 @@
           settings.</p></div>
       </div>`,
     objectives: [
-      { text: 'Pretend WebServer was hacked: from its terminal, <code>open \\\\10.1.99.20</code>. The attacker can reach your files!',
-        check: c => H.ev(c, e => e.type === 'open' && e.ok && e.dev === web17(c).id) },
+      { text: 'Pretend WebServer was hacked: from its terminal, try <code>open \\\\10.1.99.20</code>. Right now, the attacker can reach your files!',
+        check: c => H.ev(c, e => e.type === 'open' && e.dev === web17(c).id) },
       { text: 'Configure <b>Gi0/3</b> (DMZ) as <code>10.1.200.1</code> / <code>255.255.255.0</code>',
         check: c => ifOk(c, 'Gi0/3', '10.1.200.1') },
       { text: 'Move WebServer to DMZ-SW with the address <code>10.1.200.80</code>',
@@ -1407,6 +1408,177 @@
         <li>Both ends of a trunk must agree on which VLANs it carries.</li>
         <li>Each VLAN is a separate network with its own subnet. Traffic between VLANs is <b>routed</b>, so access rules still apply.</li>
         <li>Every port starts in <b>VLAN 1</b>. A switch that has never been configured is one big network.</li>
+      </ul>`,
+  });
+
+  // ---------- Level 19: virtual machines ----------
+  const OFFICE19 = P('192.168.1.0'), HOSTONLY = P('192.168.56.0');
+  const vmPort = (c, tag) => { const d = tagged(c, tag), l = c.net.links.find(x => x.a.dev === d.id || x.b.dev === d.id); return l ? (l.a.dev === d.id ? l.b : l.a).port : ''; };
+
+  Levels.push({
+    id: 'vms',
+    title: 'Virtual Lab',
+    subtitle: 'Virtual machines: bridged, NAT and host-only networks',
+    palette: {},
+    setup(net, M) {
+      const inet = M.add(net, 'internet', 90, 300, { locked: true });
+      const r = M.add(net, 'homerouter', 270, 300, { locked: true, lockedConfig: true });
+      const sw = M.add(net, 'switch', 460, 300, { locked: true });
+      const pc = M.add(net, 'pc', 680, 120, { locked: true, name: 'Colleague-PC', tag: 'colleague', hostMode: 'dhcp' });
+      const lap = M.add(net, 'vmhost', 640, 400, { locked: true, name: 'DevLaptop', tag: 'laptop' });
+      const web = M.add(net, 'vm', 880, 300, { locked: true, name: 'WebVM', tag: 'webvm', hostMode: 'dhcp', config: { services: { web: true } } });
+      const test = M.add(net, 'vm', 880, 500, { locked: true, name: 'TestVM', tag: 'testvm', hostMode: 'dhcp' });
+      M.connect(net, inet, 'ISP', r, 'WAN', { locked: true });
+      M.connect(net, r, 'LAN1', sw, 'P1', { locked: true });
+      M.connect(net, sw, 'P2', pc, 'eth0', { locked: true });
+      M.connect(net, sw, 'P3', lap, 'eth0', { locked: true });
+      M.connect(net, lap, 'nat1', web, 'eth0', { locked: true });
+      M.connect(net, lap, 'nat2', test, 'eth0', { locked: true });
+    },
+    briefing: `
+      <p>A developer runs two <b>virtual machines</b> on their laptop. <b>WebVM</b> hosts a test website that colleagues need to see. <b>TestVM</b> is
+      used to open suspicious email attachments, so it must <b>never</b> reach the Internet or the office network. Both VMs currently use the
+      hypervisor’s default network, NAT. Give each VM the right kind of network.</p>
+      <div class="concepts">
+        <div class="concept"><h5>Virtual machines</h5>
+          <p>A VM is a whole computer running as a program inside another computer (the <b>host</b>). It has a <b>virtual network card</b>, and the
+          host’s <b>hypervisor</b> (VirtualBox, VMware, Hyper-V…) decides what that card is plugged into.</p></div>
+        <div class="concept"><h5>Bridged</h5>
+          <p>The VM is plugged straight into the host’s own network, as if it had its own cable to the switch. It gets an address from the office
+          router and everyone can reach it. <i>You’ve seen this: it’s Growing Office.</i></p></div>
+        <div class="concept"><h5>NAT</h5>
+          <p>The hypervisor acts as a little home router inside the laptop: VMs get private <code>10.0.2.x</code> addresses and share the laptop’s address
+          to get out. Nothing outside can start a connection in. <i>That’s Hello, Internet and Open for Business again.</i></p></div>
+        <div class="concept"><h5>Host-only</h5>
+          <p>A private network with only the laptop and its VMs (<code>192.168.56.x</code>). It isn’t routed anywhere, so no Internet. <i>It’s like a
+          switch with nothing else plugged in.</i></p></div>
+      </div>
+      <p class="muted small">Click a VM to change its <b>Network adapter</b>. Virtual cables are drawn dotted. DevLaptop’s labels show its three networks.</p>`,
+    objectives: [
+      { text: 'From WebVM, <code>browse www.example.com</code>: a NAT VM can reach the Internet',
+        check: c => H.ev(c, e => e.type === 'browse' && e.ok && e.dev === tagged(c, 'webvm').id && e.host === 'www.example.com') },
+      { text: 'From Colleague-PC, try to <code>browse</code> WebVM’s address (find it with <code>ipconfig</code> on WebVM). NAT hides it',
+        check: c => H.ev(c, e => e.type === 'browse' && !e.ok && e.dev === tagged(c, 'colleague').id && /^10\.0\.2\.\d+$/.test(e.host)) },
+      { text: 'Set WebVM’s network adapter to <b>Bridged</b>',
+        check: c => vmPort(c, 'webvm').startsWith('br') },
+      { text: 'Colleague-PC can browse WebVM at its new office address',
+        check: c => { const ip = devIp(c, 'webvm'); return ip != null && IP.same(ip, OFFICE19, M24) && H.ev(c, e => e.type === 'browse' && e.ok && e.dev === tagged(c, 'colleague').id && e.host === IP.str(ip)); } },
+      { text: 'Set TestVM’s network adapter to <b>Host-only</b>: no Internet, no office',
+        check: c => { const ip = devIp(c, 'testvm'); return vmPort(c, 'testvm').startsWith('ho') && ip != null && IP.same(ip, HOSTONLY, M24) && !tx(c, 'testvm', P('8.8.8.8')).ok; } },
+      { text: 'From TestVM, <code>ping 8.8.8.8</code> and read why it fails',
+        check: c => H.ev(c, e => e.type === 'ping' && !e.ok && e.dev === tagged(c, 'testvm').id && e.code === 'hostonly') },
+      { text: 'From DevLaptop, <code>ping</code> TestVM: the host can still reach its host-only VMs',
+        check: c => H.ev(c, e => e.type === 'ping' && e.ok && e.dev === tagged(c, 'laptop').id && e.dst != null && IP.same(e.dst, HOSTONLY, M24) && e.dst === devIp(c, 'testvm')) },
+    ],
+    hints: [
+      'Click WebVM and run <code>browse www.example.com</code>, then <code>ipconfig</code>: its address is <code>10.0.2.x</code>, the hypervisor’s NAT network.',
+      'Click Colleague-PC and run <code>browse 10.0.2.15</code> (or whatever WebVM’s address was). The office router has never heard of 10.0.2.x: it only exists inside DevLaptop.',
+      'Click WebVM and choose <b>Bridged</b> under Network adapter. It gets a <code>192.168.1.x</code> address from the office router. Browse that address from Colleague-PC.',
+      'Click TestVM and choose <b>Host-only</b>. Run <code>ping 8.8.8.8</code> on it, then click DevLaptop and <code>ping</code> TestVM’s <code>192.168.56.x</code> address.',
+    ],
+    learned: `
+      <ul>
+        <li>A <b>virtual machine</b> has a virtual network card. The <b>hypervisor</b> chooses what it is plugged into.</li>
+        <li><b>Bridged</b>: the VM is a full member of the host’s network, gets an address there and can be reached by everyone.</li>
+        <li><b>NAT</b>: the hypervisor is a mini router. The VM can get out, but nothing can get in (unless you add a port forward, just like on a home router).</li>
+        <li><b>Host-only</b>: an isolated network for the host and its VMs. Good for testing things that must not escape.</li>
+        <li>Nothing here was new: switches, NAT and isolated networks, just inside one computer. Containers and the cloud reuse the same ideas.</li>
+      </ul>`,
+  });
+
+  // ---------- Level 20: SSH and a jump host ----------
+  const JUMP = P('10.1.99.10');
+  const sshEv = (c, from, to) => H.ev(c, e => e.type === 'ssh' && e.ok && e.dev === tagged(c, from).id && e.to === tagged(c, to).id);
+  const onlyFromJump = (c, tag) => { const d = tagged(c, tag); return NG.Sim.sshAllowed(d, JUMP) && !NG.Sim.sshAllowed(d, P('10.1.99.77')) && !NG.Sim.sshAllowed(d, P('10.1.30.100')); };
+
+  Levels.push({
+    id: 'ssh',
+    title: 'The Jump Box',
+    subtitle: 'SSH, and one locked door to the servers',
+    palette: {},
+    features: { acl: true },
+    setup(net, M) {
+      const inet = M.add(net, 'internet', 90, 300, { locked: true });
+      const r = M.add(net, 'officerouter', 280, 300, {
+        locked: true,
+        config: {
+          ifaces: { 'Gi0/1': lanCfg('10.1.10', '10.1.99.53'), 'Gi0/2': lanCfg('10.1.30', '10.1.99.53'), 'Gi0/3': { ip: '10.1.99.1', mask: '255.255.255.0' } },
+          acl: [
+            { action: 'permit', src: 'any', dst: '10.1.99.20', proto: 'tcp', port: '445' },
+            { action: 'permit', src: 'any', dst: '10.1.99.53', proto: 'udp', port: '53' },
+            { action: 'permit', src: 'any', dst: '10.1.99.0/24', proto: 'tcp', port: '22' },
+            { action: 'deny', src: 'any', dst: '10.1.99.0/24', proto: 'any', port: '' },
+            { action: 'permit', src: 'any', dst: 'any', proto: 'any', port: '' },
+          ],
+        },
+      });
+      M.connect(net, inet, 'ISP', r, 'Gi0/0', { locked: true });
+      const sw = [['Staff-SW', 'Gi0/1', 100], ['IT-SW', 'Gi0/2', 280], ['Servers-SW', 'Gi0/3', 470]].map(([name, port, y]) => {
+        const s = M.add(net, 'switch', 520, y, { locked: true, name });
+        M.connect(net, r, port, s, 'P1', { locked: true });
+        return s;
+      });
+      const pc = M.add(net, 'pc', 780, 100, { locked: true, name: 'Staff-PC', tag: 'staff', hostMode: 'dhcp' });
+      const it = M.add(net, 'laptop', 780, 280, { locked: true, name: 'IT-Laptop', tag: 'it', hostMode: 'dhcp' });
+      const jump = srv(M, net, 'Jump1', 'jump', 780, 400, '10.1.99.10', { config: { services: { ssh: true } } });
+      const fs = srv(M, net, 'FS1', 'fs', 780, 535, '10.1.99.20', { config: { services: { files: true, ssh: true } } });
+      const dns = srv(M, net, 'DNS1', 'dns1', 340, 530, '10.1.99.53', { config: { dns: '8.8.8.8', services: { dns: true, ssh: true },
+        dnsRecords: [{ name: 'jump1.office', ip: '10.1.99.10' }, { name: 'fs1.office', ip: '10.1.99.20' }, { name: 'files.office', ip: '10.1.99.20' }, { name: 'dns1.office', ip: '10.1.99.53' }] } });
+      M.connect(net, sw[0], 'P2', pc, 'eth0', { locked: true });
+      M.connect(net, sw[1], 'P2', it, 'eth0', { locked: true });
+      M.connect(net, sw[2], 'P2', jump, 'eth0', { locked: true });
+      M.connect(net, sw[2], 'P3', fs, 'eth0', { locked: true });
+      M.connect(net, sw[2], 'P4', dns, 'eth0', { locked: true });
+    },
+    briefing: `
+      <p>IT manages the servers remotely with <b>SSH</b>. To make life easy, someone added a rule that lets <b>anyone</b> SSH to the Servers network.
+      The auditors are not happy. Lock it down: only IT may log in, only through one hardened <b>jump host</b>, and the servers must refuse SSH from
+      anywhere else.</p>
+      <div class="box"><b>Network plan</b>
+        <table class="kv">
+          <tr><th>Gi0/1: Staff</th><td><code>10.1.10.0/24</code></td></tr>
+          <tr><th>Gi0/2: IT</th><td><code>10.1.30.0/24</code></td></tr>
+          <tr><th>Gi0/3: Servers</th><td><code>10.1.99.0/24</code>: Jump1 <code>.10</code> (<code>jump1.office</code>), FS1 <code>.20</code> (<code>fs1.office</code>), DNS1 <code>.53</code></td></tr>
+        </table></div>
+      <div class="concepts">
+        <div class="concept"><h5>SSH</h5>
+          <p><b>Secure Shell</b> (TCP port 22) gives you a command line on another computer, over an <b>encrypted</b> connection. Type
+          <code>ssh jump1.office</code>, and the terminal is now on Jump1. <code>exit</code> brings you back.</p></div>
+        <div class="concept"><h5>Jump host</h5>
+          <p>Instead of exposing SSH on every server, you expose <b>one</b> well-guarded machine. Admins SSH to it first, then hop from there to the
+          servers. One door is far easier to watch than ten. (Also called a <b>bastion host</b>.)</p></div>
+        <div class="concept"><h5>The router can’t see inside a subnet</h5>
+          <p>Jump1 and FS1 are on the same network, so their traffic never passes the router, and router rules can’t filter it. Each server needs its
+          own rule: <b>Allow SSH from</b> Jump1 only. That’s a <b>host firewall</b>.</p></div>
+        <div class="concept"><h5>Defence in depth</h5>
+          <p>Router rules <i>and</i> host rules. If someone gets one wrong, the other still holds.</p></div>
+      </div>`,
+    objectives: [
+      { text: 'From Staff-PC, try <code>ssh fs1.office</code>. Right now anyone can log in to the file server! (<code>exit</code> to come back)',
+        check: c => H.ev(c, e => e.type === 'ssh' && e.dev === tagged(c, 'staff').id && (e.to === tagged(c, 'fs').id || e.ip === P('10.1.99.20'))) },
+      { text: 'Router: only the IT network may SSH, and only to Jump1 (<code>10.1.99.10</code>)',
+        check: c => tx(c, 'it', JUMP, 'tcp', 22).ok && blocked(tx(c, 'staff', JUMP, 'tcp', 22))
+          && blocked(tx(c, 'it', P('10.1.99.20'), 'tcp', 22)) && blocked(tx(c, 'it', P('10.1.99.53'), 'tcp', 22)) && blocked(tx(c, 'staff', P('10.1.99.20'), 'tcp', 22)) },
+      { text: 'FS1 and DNS1 only accept SSH from Jump1 (<b>Allow SSH from</b> on each server)',
+        check: c => onlyFromJump(c, 'fs') && onlyFromJump(c, 'dns1') },
+      { text: 'Hop: from IT-Laptop <code>ssh jump1.office</code>, then from Jump1 <code>ssh fs1.office</code>',
+        check: c => sshEv(c, 'it', 'jump') && sshEv(c, 'jump', 'fs') },
+      { text: 'Staff can still open <code>\\\\files.office</code> and browse <code>www.example.com</code>',
+        check: c => NG.Sim.openShare(c.T, tagged(c, 'staff').id, '\\\\files.office').ok && canBrowse(c, tagged(c, 'staff')) },
+    ],
+    hints: [
+      'Click Staff-PC and type <code>ssh fs1.office</code>. The terminal is now on FS1. Type <code>exit</code> to go back.',
+      'On the router, remove rule 3 (<code>permit any → 10.1.99.0/24 TCP 22</code>). Add <b>permit</b> <code>10.1.30.0/24</code> → <code>10.1.99.10</code> TCP <code>22</code>, then move it above the deny rule.',
+      'Click FS1, type <code>10.1.99.10</code> in <b>Allow SSH from</b> and press <b>Apply settings</b>. Do the same on DNS1.',
+      'Click IT-Laptop: <code>ssh jump1.office</code>. Now on Jump1, type <code>ssh fs1.office</code>. Try <code>ssh fs1.office</code> straight from IT-Laptop too: the router stops it.',
+    ],
+    learned: `
+      <ul>
+        <li><b>SSH</b> (TCP 22) gives an encrypted command line on another computer.</li>
+        <li>A <b>jump host</b> (bastion) is the single, well-guarded way in. Admins hop through it to reach everything else.</li>
+        <li>Router rules only see traffic <b>between</b> networks. Traffic inside one subnet needs a <b>host firewall</b> on each server.</li>
+        <li>Using both is <b>defence in depth</b>: one mistake doesn’t open everything.</li>
+        <li>Cloud networks work the same way: a bastion host, plus security groups that only allow SSH from it.</li>
       </ul>`,
   });
 
