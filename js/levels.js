@@ -651,7 +651,7 @@
     ],
     hints: [
       'Click <b>Subnet helper</b> in the top bar. The coloured bar is the whole /24: 256 addresses.',
-      'Click a block to select it. <b>Split in half</b> divides the selected block. <b>Merge with its other half</b> joins it back with the block it came from.',
+      'Click a block in the bar, or its row in the list under the bar, to select it. <b>Split</b> divides that block in half. <b>Merge with its other half</b> joins it back with the block it came from.',
       'For the mixed plan: split the /24 into two /25s. Leave the first alone. Split the second into two /26s, then split the last /26 into two /27s.',
       'Watch the binary table: every split moves one more bit into the yellow subnet part, and the blue host part shrinks.',
     ],

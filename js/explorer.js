@@ -25,26 +25,27 @@
   };
 
   // The other half of the block this one was split from.
-  function buddyIndex() {
-    const b = st.blocks[st.sel];
+  function buddyIndex(i = st.sel) {
+    const b = st.blocks[i];
     if (b.p <= 24) return -1;
     const buddy = (b.net ^ size(b.p)) >>> 0;
     return st.blocks.findIndex(k => k.net === buddy && k.p === b.p);
   }
 
-  function split() {
-    const b = st.blocks[st.sel];
+  function split(i = st.sel) {
+    const b = st.blocks[i];
     if (b.p >= 30) return;
     const half = size(b.p + 1);
-    st.blocks.splice(st.sel, 1, { net: b.net, p: b.p + 1 }, { net: b.net + half, p: b.p + 1 });
+    st.blocks.splice(i, 1, { net: b.net, p: b.p + 1 }, { net: b.net + half, p: b.p + 1 });
+    st.sel = i;
   }
 
-  function merge() {
-    const j = buddyIndex();
+  function merge(i = st.sel) {
+    const j = buddyIndex(i);
     if (j < 0) return;
-    const i = Math.min(st.sel, j), b = st.blocks[i];
-    st.blocks.splice(i, 2, { net: b.net, p: b.p - 1 });
-    st.sel = i;
+    const lo = Math.min(i, j), b = st.blocks[lo];
+    st.blocks.splice(lo, 2, { net: b.net, p: b.p - 1 });
+    st.sel = lo;
   }
 
   function splitAll(p) {
@@ -58,6 +59,19 @@
     const label = w >= 12 ? `.${last(k.net)}/${k.p}` : w >= 6 ? `/${k.p}` : '';
     return `<button class="sx-seg ${i === st.sel ? 'sel' : ''}" data-i="${i}" style="width:${w}%;--c:${COLORS[i % COLORS.length]}"
       title="${IP.str(k.net)}/${k.p}: ${size(k.p) - 2} usable">${label}</button>`;
+  }
+
+  // One row per block, so even blocks too thin to click in the bar can be picked, split or merged.
+  function listRow(k, i) {
+    const s = size(k.p);
+    return `<div class="sx-row ${i === st.sel ? 'sel' : ''}" data-i="${i}" tabindex="0" style="--c:${COLORS[i % COLORS.length]}">
+      <span class="sx-swatch"></span>
+      <code>${IP.str(k.net)}/${k.p}</code>
+      <span class="muted small">.${last(k.net)} – .${last(k.net + s - 1)} · ${s - 2} usable</span>
+      <span class="grow"></span>
+      <button data-split="${i}" ${k.p >= 30 ? 'disabled' : ''}>Split</button>
+      <button data-merge="${i}" ${buddyIndex(i) < 0 ? 'disabled' : ''}>Merge</button>
+    </div>`;
   }
 
   function detail(b) {
@@ -137,7 +151,7 @@
     root.innerHTML = `
       <h2>Subnet helper</h2>
       ${checklist()}
-      <p class="muted">The bar is one /24 block: 256 addresses from <code>.0</code> to <code>.255</code>. Click a block to inspect it, then split it in half or merge it back.
+      <p class="muted">The bar is one /24 block: 256 addresses from <code>.0</code> to <code>.255</code>. Click a block in the bar or the list below to select it, then split it in half or merge it back.
       You can mix sizes, as you would when planning real networks.</p>
       <div class="sx-controls">
         <label>Block <input id="sx-base" value="${IP.str(st.base)}" spellcheck="false"> /24</label>
@@ -148,10 +162,19 @@
       </div>
       <div class="sx-bar">${st.blocks.map(seg).join('')}</div>
       <div class="sx-scale">${[0, 64, 128, 192].map(v => `<span style="left:${v / 256 * 100}%">.${v}</span>`).join('')}<span style="right:0">.255</span></div>
+      <div class="sx-list">${st.blocks.map(listRow).join('')}</div>
       ${detail(b)}
       ${explain(b)}`;
 
     $$('.sx-seg', root).forEach(el => { el.onclick = () => { st.sel = Number(el.dataset.i); render(); }; });
+    $$('.sx-row', root).forEach(el => {
+      el.onclick = () => { st.sel = Number(el.dataset.i); render(); };
+      el.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.onclick(); } };
+    });
+    $$('[data-split]', root).forEach(el => { el.onclick = e => { e.stopPropagation(); split(Number(el.dataset.split)); render(); }; });
+    $$('[data-merge]', root).forEach(el => { el.onclick = e => { e.stopPropagation(); merge(Number(el.dataset.merge)); render(); }; });
+    const selRow = $('.sx-row.sel', root);
+    if (selRow) selRow.scrollIntoView({ block: 'nearest' });
     $('#sx-split', root).onclick = () => { split(); render(); };
     $('#sx-merge', root).onclick = () => { merge(); render(); };
     $('#sx-all', root).onchange = e => { splitAll(Number(e.target.value)); render(); };
