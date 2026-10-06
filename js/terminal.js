@@ -176,7 +176,7 @@
   // Animate a request/reply and mark where it failed.
   Tm.animT = async function (t, label) {
     if (t.req.path.length) await C().animate(t.req.path, { cls: 'req', label });
-    if (t.stage === 'request') { C().flash(t.fail.dev, 'bad'); return; }
+    if (t.stage === 'request') { C().flash(t.fail.dev, t.fail.code === 'acl' ? 'block' : 'bad'); return; }
     if (t.rep && t.rep.path.length) await C().animate(t.rep.path, { cls: 'rep', label: 'reply' });
     C().flash(t.ok ? t.from : t.fail.dev, t.ok ? 'ok' : 'bad');
   };
@@ -227,7 +227,7 @@
     p(`Ping statistics for ${IP.str(dst)}:`);
     p(`    Packets: Sent = 4, Received = ${t.ok ? 4 : 0}, Lost = ${t.ok ? 0 : 4} (${t.ok ? 0 : 100}% loss)`);
     if (!t.ok) why(p, Sim.explain(T, t.fail, t.stage));
-    G().recordEvent({ type: 'ping', dev: d.id, dst, name: IP.parse(args[0]) == null ? args[0].toLowerCase() : null, ok: t.ok });
+    G().recordEvent({ type: 'ping', dev: d.id, dst, name: IP.parse(args[0]) == null ? args[0].toLowerCase() : null, ok: t.ok, code: t.fail && t.fail.code });
   }
 
   async function nslookup(d, args, p) {
@@ -309,7 +309,7 @@
         why(p, Sim.explain(T, r.fail, r.stage));
       }
     }
-    G().recordEvent({ type: 'open', dev: d.id, host: r.host, ok: r.ok });
+    G().recordEvent({ type: 'open', dev: d.id, host: r.host, ok: r.ok, code: r.fail && r.fail.code });
   }
 
   async function testPort(d, args, p) {
@@ -330,10 +330,11 @@
       await Tm.animT(r.conn, String(port));
       if (r.ok) p(`${what}: OPEN. Something is listening.`, 'ok');
       else if (r.closed) p(`${what}: CLOSED. The device answered, but nothing is listening on that port.`, 'warn');
+      else if (r.fail.code === 'acl') p(`${what}: FILTERED. No answer at all: something on the way dropped the packet.`, 'err');
       else p(`${what}: no answer. The device couldn't be reached at all.`, 'err');
       if (!r.ok) why(p, Sim.explain(T, r.fail, r.stage));
     }
-    G().recordEvent({ type: 'test', dev: d.id, host: String(args[0]).toLowerCase(), ip: r.ip, port, ok: r.ok, closed: !!r.closed });
+    G().recordEvent({ type: 'test', dev: d.id, host: String(args[0]).toLowerCase(), ip: r.ip, port, ok: r.ok, closed: !!r.closed, code: r.fail && r.fail.code });
   }
 
   function netstat(d, p) {

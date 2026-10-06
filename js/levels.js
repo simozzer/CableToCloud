@@ -819,13 +819,14 @@
   const allCan = (c, f) => staff(c).every(d => f(d).ok);
   const fromEach = (c, f) => DEPTS.every(dep => H.ev(c, e => e.dev === tagged(c, dep.tag).id && f(e)));
 
-  // fs: optional ready-made file server. Gi0/3 is left unconfigured unless serversIf is given.
+  // fs: optional ready-made file server. hrfs: add HR's own file server. acl: starting access rules.
+  // Gi0/3 is left unconfigured unless serversIf is given.
   function serverOffice(net, M, o) {
     const inet = M.add(net, 'internet', 90, 300, { locked: true });
     const ifaces = {};
     DEPTS.forEach(d => { ifaces[d.iface] = deptIf(d); });
     if (o.serversIf) ifaces['Gi0/3'] = { ip: '10.1.99.1', mask: '255.255.255.0' };
-    const r = M.add(net, 'officerouter', 280, 300, { locked: true, config: { ifaces } });
+    const r = M.add(net, 'officerouter', 280, 300, { locked: true, config: { ifaces, acl: (o.acl || []).map(x => Object.assign({}, x)) } });
     M.connect(net, inet, 'ISP', r, 'Gi0/0', { locked: true });
     DEPTS.forEach(d => {
       const sw = M.add(net, 'switch', 520, d.y, { locked: true, name: d.name + '-SW' });
@@ -833,23 +834,30 @@
       M.connect(net, r, d.iface, sw, 'P1', { locked: true });
       M.connect(net, sw, 'P2', pc, 'eth0', { locked: true });
     });
-    const sw = M.add(net, 'switch', 520, 500, { locked: true, name: 'Servers-SW' });
-    const dns = M.add(net, 'server', 780, 440, {
+    const sw = M.add(net, 'switch', 520, 480, { locked: true, name: 'Servers-SW' });
+    const dns = M.add(net, 'server', 780, 410, {
       locked: true, name: 'DNS1', tag: 'dns1', hostMode: 'static',
       config: { ip: '10.1.99.53', mask: '255.255.255.0', gw: '10.1.99.1', dns: '8.8.8.8', services: { dns: true }, dnsRecords: o.records },
     });
     M.connect(net, r, 'Gi0/3', sw, 'P1', { locked: true });
     M.connect(net, sw, 'P2', dns, 'eth0', { locked: true });
     if (o.fs) {
-      const fs = M.add(net, 'server', 780, 580, {
+      const fs = M.add(net, 'server', 780, 530, {
         locked: true, name: 'FS1', tag: 'fs', hostMode: 'static',
         config: { ip: '10.1.99.20', mask: '255.255.255.0', gw: '10.1.99.1', dns: '10.1.99.53', services: o.fs },
       });
       M.connect(net, sw, 'P3', fs, 'eth0', { locked: true });
     }
+    if (o.hrfs) {
+      const hr = M.add(net, 'server', 340, 530, {
+        locked: true, lockedConfig: true, name: 'HR-FS', tag: 'hrfs', hostMode: 'static',
+        config: { ip: '10.1.99.30', mask: '255.255.255.0', gw: '10.1.99.1', dns: '10.1.99.53', services: { files: true } },
+      });
+      M.connect(net, sw, 'P4', hr, 'eth0', { locked: true });
+    }
   }
 
-  const OFFICE_PLAN = `
+  const officePlan = (extra = '') => `
       <div class="box"><b>Network plan</b>
         <table class="kv">
           <tr><th>Gi0/1: Sales</th><td><code>10.1.10.0/24</code>, router <code>10.1.10.1</code>, DHCP</td></tr>
@@ -857,6 +865,7 @@
           <tr><th>Gi0/3: Servers</th><td><code>10.1.99.0/24</code>, router <code>10.1.99.1</code>, static addresses only</td></tr>
           <tr><th>DNS1</th><td><code>10.1.99.53</code>: the company’s internal DNS server</td></tr>
           <tr><th>File server</th><td><code>10.1.99.20</code>, name <code>files.office</code></td></tr>
+          ${extra}
         </table></div>`;
 
   // ---------- Level 12: a shared file server ----------
@@ -874,7 +883,7 @@
       <p>The company keeps its servers on their own <b>Servers</b> network. The internal DNS server, <b>DNS1</b>, is already there, but the
       router’s Servers port (Gi0/3) was never set up. Staff can’t open any websites. Your job: fix that, then add a <b>shared file server</b>
       that both Sales and HR can open by name.</p>
-      ${OFFICE_PLAN}
+      ${officePlan()}
       <div class="concepts">
         <div class="concept"><h5>A network for servers</h5>
           <p>Putting servers on their own network keeps them tidy and easy to protect. Each department reaches them <b>through the router</b>,
@@ -941,7 +950,7 @@
     briefing: `
       <p>FS1 now runs two things: the shared drive <i>and</i> the company intranet website. After last night’s power cut the help desk is getting calls:
       <i>“The intranet works, but the shared drive has gone.”</i> Same server, same address. How can one work and not the other?</p>
-      ${OFFICE_PLAN}
+      ${officePlan()}
       <div class="concepts">
         <div class="concept"><h5>Ports are doors</h5>
           <p>An IP address gets a packet to the right <b>device</b>. The <b>port number</b> gets it to the right <b>service</b> on that device.
@@ -991,6 +1000,149 @@
         <li><code>netstat</code> shows what a server is listening on. <code>test host port</code> checks it from the client’s side.</li>
         <li>DNS maps names to <b>addresses</b>, not ports, so many names can share one server.</li>
         <li>Next, <b>firewall rules</b> will use the same idea: allow or block traffic by address <i>and</i> port.</li>
+      </ul>`,
+  });
+
+  // ---------- Access rules (levels 14 and 15) ----------
+  const HRFS_IP = P('10.1.99.30');
+  const HR_RECORDS = [
+    { name: 'dns1.office', ip: '10.1.99.53' }, { name: 'files.office', ip: '10.1.99.20' },
+    { name: 'intranet.office', ip: '10.1.99.20' }, { name: 'hr.office', ip: '10.1.99.30' },
+  ];
+  const HR_ROW = '<tr><th>HR-FS</th><td><code>10.1.99.30</code>, name <code>hr.office</code>: HR’s private files</td></tr>';
+  const share = (c, tag, name) => NG.Sim.openShare(c.T, tagged(c, tag).id, '\\\\' + name);
+  const blocked = t => !t.ok && !!t.fail && t.fail.code === 'acl';
+  const onlyHr = c => share(c, 'hr', 'hr.office').ok && blocked(share(c, 'sales', 'hr.office'));
+  const everyoneShared = c => allCan(c, d => NG.Sim.openShare(c.T, d.id, '\\\\files.office')) && allCan(c, d => NG.Sim.browse(c.T, d.id, 'intranet.office'));
+  const RULES_CONCEPTS = `
+        <div class="concept"><h5>Access rules</h5>
+          <p>A list on the router that says which <b>new connections</b> may pass between networks. Each rule matches a
+          <b>source</b>, a <b>destination</b>, a <b>protocol</b> and a <b>port</b>, and says <span class="acl-permit">permit</span> or <span class="acl-deny">deny</span>.</p></div>
+        <div class="concept"><h5>First match wins</h5>
+          <p>The router reads the list from the top and stops at the <b>first</b> rule that matches. So order matters: a broad rule high up
+          hides every rule below it.</p></div>
+        <div class="concept"><h5>Everything else is denied</h5>
+          <p>Once a list has any rules, a connection that matches <b>none</b> of them is blocked. To allow “everything else”, end the list with
+          <code>permit any → any</code>.</p></div>
+        <div class="concept"><h5>Replies get back</h5>
+          <p>The router remembers the connections it allowed, so their <b>replies</b> are let back automatically. You only write rules for the
+          side that starts the connection.</p></div>`;
+
+  // ---------- Level 14: HR only ----------
+  Levels.push({
+    id: 'acl',
+    title: 'HR Only',
+    subtitle: 'Access rules: let HR in and keep everyone else out',
+    palette: {},
+    features: { acl: true },
+    setup(net, M) { serverOffice(net, M, { serversIf: true, fs: { web: true, files: true }, hrfs: true, records: HR_RECORDS }); },
+    briefing: `
+      <p>HR now has its own file server, <b>HR-FS</b>, full of salaries and personal records. There’s a problem: the router forwards everything
+      between networks, so <b>anyone</b> in Sales can open it. Add <b>access rules</b> to the router so only HR can reach HR-FS, without
+      breaking anything else.</p>
+      ${officePlan(HR_ROW)}
+      <div class="concepts">${RULES_CONCEPTS}
+        <div class="concept"><h5>Closed vs filtered</h5>
+          <p>A <b>closed</b> port answers “nothing here”. A <b>filtered</b> port gives no answer at all, because something on the way dropped the packet.
+          <code>test</code> shows the difference.</p></div>
+      </div>
+      <p class="muted small">Click the router: <b>Access rules</b> is at the top of its settings. Leave the port empty to mean any port.</p>`,
+    objectives: [
+      { text: 'From Sales-PC, <code>open \\\\hr.office</code>. It works, and it shouldn’t!',
+        check: c => H.ev(c, e => e.type === 'open' && e.ok && e.host === 'hr.office' && e.dev === tagged(c, 'sales').id) },
+      { text: 'Sales can no longer open <code>\\\\hr.office</code>',
+        check: c => blocked(share(c, 'sales', 'hr.office')) },
+      { text: 'HR can still open <code>\\\\hr.office</code>',
+        check: c => share(c, 'hr', 'hr.office').ok },
+      { text: 'Both departments can still open <code>\\\\files.office</code> and browse <code>intranet.office</code>',
+        check: everyoneShared },
+      { text: 'Both departments can still browse <code>www.example.com</code>',
+        check: c => staff(c).every(d => canBrowse(c, d)) },
+      { text: 'From Sales-PC, <code>test hr.office 445</code> now says <b>FILTERED</b>',
+        check: c => H.ev(c, e => e.type === 'test' && e.dev === tagged(c, 'sales').id && e.ip === HRFS_IP && e.port === 445 && e.code === 'acl') },
+      { text: 'Experiment: move your deny rule <b>above</b> the HR permit and watch HR get blocked too. Then put it back',
+        check: c => H.ev(c, e => (e.type === 'open' || e.type === 'test') && e.dev === tagged(c, 'hr').id && e.code === 'acl' && (e.host === 'hr.office' || e.ip === HRFS_IP)) },
+    ],
+    hints: [
+      'Click Sales-PC and run <code>open \\\\hr.office</code>. Then click the router and find <b>Access rules</b>.',
+      'Rule 1: <b>permit</b>, source <code>10.1.20.0/24</code> (HR), destination <code>10.1.99.30</code>, TCP, port <code>445</code>. Rule 2: <b>deny</b>, source <code>any</code>, destination <code>10.1.99.30</code>, any protocol.',
+      'Did the Internet and the shared drive stop working? With two rules, everything else now hits the hidden “deny everything else”. Add rule 3: <b>permit</b> <code>any</code> → <code>any</code>, any protocol.',
+      'For the experiment, press ▲ on the deny rule, then run <code>open \\\\hr.office</code> on HR-PC. Read the “Why?” line, then press ▼ to put it back.',
+    ],
+    learned: `
+      <ul>
+        <li><b>Access rules</b> (a firewall) decide which connections may pass, by source, destination, protocol and port.</li>
+        <li>The <b>first matching rule</b> wins, so put specific rules (permit HR) above broad ones (deny everyone).</li>
+        <li>A list with any rules ends in an invisible <b>deny everything else</b>. Add <code>permit any → any</code> if everything else should still work.</li>
+        <li>The router lets <b>replies</b> to allowed connections back in automatically. This is called a <b>stateful</b> firewall.</li>
+        <li>A <b>filtered</b> port gives no answer at all. A <b>closed</b> one answers “nothing listening here”.</li>
+        <li>Separate networks plus rules between them is how real offices protect sensitive servers, and how cloud <b>security groups</b> work too.</li>
+      </ul>`,
+  });
+
+  // ---------- Level 15: troubleshooting access rules ----------
+  const BROKEN_ACL = [
+    { action: 'permit', src: '10.1.0.0/16', dst: '10.1.99.30', proto: 'tcp', port: '445' },
+    { action: 'deny', src: 'any', dst: '10.1.99.30', proto: 'any', port: '' },
+    { action: 'deny', src: 'any', dst: '10.1.99.0/24', proto: 'any', port: '' },
+    { action: 'permit', src: 'any', dst: '10.1.99.20', proto: 'tcp', port: '80' },
+    { action: 'permit', src: 'any', dst: '10.1.99.53', proto: 'udp', port: '53' },
+    { action: 'deny', src: '10.1.10.0/24', dst: '10.1.20.0/24', proto: 'any', port: '' },
+  ];
+
+  Levels.push({
+    id: 'acl-troubleshoot',
+    title: 'Locked Out',
+    subtitle: 'Fix a broken set of access rules',
+    palette: {},
+    features: { acl: true },
+    setup(net, M) { serverOffice(net, M, { serversIf: true, fs: { web: true, files: true }, hrfs: true, records: HR_RECORDS, acl: BROKEN_ACL }); },
+    briefing: `
+      <p>Over the weekend a contractor “tightened security” on the router. On Monday <b>nothing works</b>: no websites, no intranet, no shared drive.
+      And the one thing that should be locked down isn’t. Fix the access rules so they match the company policy.</p>
+      ${officePlan(HR_ROW)}
+      <div class="box"><b>Company policy</b>
+        <ol class="steps">
+          <li>Everyone may use <b>DNS1</b> (UDP 53), the <b>intranet</b> (FS1, TCP 80) and the <b>shared drive</b> (FS1, TCP 445).</li>
+          <li>Only <b>HR</b> (<code>10.1.20.0/24</code>) may open <b>HR-FS</b>.</li>
+          <li><b>Sales</b> may not connect to anything in the <b>HR network</b>.</li>
+          <li>Nothing else may connect to the Servers network.</li>
+          <li>Everything else, including the Internet, is allowed.</li>
+        </ol></div>
+      <div class="concepts">${RULES_CONCEPTS}</div>
+      <h4>How to troubleshoot rules</h4>
+      <ul class="howto">
+        <li>Test one thing at a time: <code>nslookup</code>, <code>browse</code>, <code>open</code>, <code>test host port</code>, <code>ping</code>.</li>
+        <li>When something is blocked, the <b>Why?</b> line names the rule that matched. Ask: <i>should</i> it have matched? Should an earlier rule have caught it?</li>
+        <li>Fix the most basic thing first. If names don’t work, nothing by name will.</li>
+      </ul>`,
+    objectives: [
+      { text: 'Names work again: both departments can <code>nslookup intranet.office</code>',
+        check: c => staff(c).every(d => NG.Sim.resolve(c.T, d.id, 'intranet.office').ok) },
+      { text: 'Both departments can browse <code>intranet.office</code>',
+        check: c => allCan(c, d => NG.Sim.browse(c.T, d.id, 'intranet.office')) },
+      { text: 'Both departments can open <code>\\\\files.office</code>',
+        check: c => allCan(c, d => NG.Sim.openShare(c.T, d.id, '\\\\files.office')) },
+      { text: 'Both departments can browse <code>www.example.com</code>',
+        check: c => staff(c).every(d => canBrowse(c, d)) },
+      { text: '<b>Only</b> HR can open <code>\\\\hr.office</code>',
+        check: onlyHr },
+      { text: 'Sales still can’t connect to the HR network (e.g. Sales-PC can’t <code>ping</code> HR-PC)',
+        check: c => { const hr = H.ifc(c, tagged(c, 'hr')); return hr.ip != null && blocked(NG.Sim.transact(c.T, tagged(c, 'sales').id, hr.ip)); } },
+    ],
+    hints: [
+      'On Sales-PC, <code>nslookup intranet.office</code>. The Why? line blames rule 3. It blocks the whole Servers network, and it sits <b>above</b> the rules that permit DNS1 and FS1. Move it down with ▼, below rule 6.',
+      'The intranet works but <code>open \\\\files.office</code> doesn’t: the only rule for FS1 permits port 80. Add <b>permit</b> <code>any</code> → <code>10.1.99.20</code> TCP <code>445</code> and move it above the “deny any → 10.1.99.0/24” rule.',
+      'Still no <code>www.example.com</code>? No rule permits Internet traffic, so it falls through to “deny everything else” (DNS1 can’t ask 8.8.8.8 either). Add <b>permit</b> <code>any</code> → <code>any</code> at the very bottom.',
+      'Sales can open <code>\\\\hr.office</code> because rule 1’s source <code>10.1.0.0/16</code> covers every <code>10.1.x.x</code> network. Remove it and add <b>permit</b> <code>10.1.20.0/24</code> → <code>10.1.99.30</code> TCP <code>445</code>, then move it to the top.',
+    ],
+    learned: `
+      <ul>
+        <li>A rule that is <b>too broad</b> and too high (deny the whole Servers network) hides the permits below it.</li>
+        <li>A rule with the <b>wrong port</b> allows one service (web, 80) but not another on the same server (files, 445).</li>
+        <li>A source that is <b>too wide</b> (<code>/16</code> instead of <code>/24</code>) lets in people it shouldn’t: subnetting matters for security too.</li>
+        <li>Forgetting the final <code>permit any → any</code> blocks everything not listed, including servers that need the Internet, like DNS1.</li>
+        <li>Troubleshoot rules like networks: test one thing, read which rule matched, and fix from the most basic service up.</li>
       </ul>`,
   });
 

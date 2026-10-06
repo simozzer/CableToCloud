@@ -129,7 +129,25 @@ button.danger { background: transparent; border-color: #7f1d1d; color: var(--bad
 }
 .pf-add #pf-ip { flex: 1; }
 .pf-add #pf-port, .pf-add #pf-to { width: 52px; }
+.pf-add #dns-name, .pf-add #dns-ip { flex: 1; }
 .small-btn { padding: 1px 7px; font-size: 12px; }
+.acl { border-color: color-mix(in srgb, var(--warn) 45%, var(--border)); }
+.acl-list { list-style: none; margin: 0 0 8px; padding: 0; font-size: 12.5px; }
+.acl-list li { display: flex; align-items: flex-start; gap: 6px; padding: 5px 0; border-bottom: 1px solid #1a2740; }
+.acl-n { flex: none; width: 16px; color: var(--muted); }
+.acl-rule { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.acl-rule small { display: block; }
+.acl-permit { color: var(--good); font-weight: 600; }
+.acl-deny { color: var(--bad); font-weight: 600; }
+.acl-btns { flex: none; white-space: nowrap; }
+.acl-btns button { margin-left: 2px; }
+.acl-add { display: grid; grid-template-columns: 1fr 1.3fr 64px; gap: 5px; margin-top: 6px; }
+.acl-add .wide { grid-column: 1 / -1; }
+.acl-add input, .acl-add select {
+  font: 12.5px var(--mono); color: var(--text); background: var(--bg);
+  border: 1px solid var(--border); border-radius: 6px; padding: 5px 6px; min-width: 0;
+}
+.acl-add input:disabled { opacity: .45; }
 .check { display: block; font-size: 13px; cursor: pointer; margin: 4px 0; }
 .calc { font-size: 11.5px; color: var(--muted); min-height: 1em; }
 .btn-row { display: flex; gap: 8px; margin-top: 10px; }
@@ -222,6 +240,7 @@ button.danger { background: transparent; border-color: #7f1d1d; color: var(--bad
 .flash path { fill: none; stroke-width: 4; stroke-linecap: round; }
 .flash.bad circle, .flash.bad path { stroke: var(--bad); }
 .flash.ok circle, .flash.ok path { stroke: var(--good); }
+.flash.block circle, .flash.block path { stroke: var(--bad); }
 @keyframes flash { 0% { opacity: 0; } 15% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; } }
 
 /* Port picker & toast */

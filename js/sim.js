@@ -240,6 +240,55 @@
     return edges;
   }
 
+  // ---------- Access rules (a simple firewall on the router) ----------
+
+  // "any", "10.1.99.30" or "10.1.20.0/24" → { net, mask }, or null if invalid.
+  function parseRange(s) {
+    s = String(s || '').trim().toLowerCase();
+    if (s === 'any' || s === '*') return { net: 0, mask: 0, any: true };
+    const m = /^([\d.]+)(?:\/(\d{1,2}))?$/.exec(s);
+    if (!m) return null;
+    const ip = P(m[1]), p = m[2] == null ? 32 : Number(m[2]);
+    if (ip == null || p > 32) return null;
+    const mask = IP.maskFromPrefix(p);
+    return { net: IP.net(ip, mask), mask, aligned: IP.net(ip, mask) === ip };
+  }
+  const inRange = (ip, r) => IP.same(ip, r.net, r.mask);
+
+  function ruleText(r) {
+    const proto = r.proto === 'any' ? 'any' : r.proto.toUpperCase();
+    return `${r.action} ${r.src} → ${r.dst} ${proto}${r.port && r.proto !== 'any' && r.proto !== 'icmp' ? ' ' + r.port : ''}`;
+  }
+
+  // Why didn't this rule match the packet? null = it matches.
+  function ruleMiss(r, pkt) {
+    const s = IP.str;
+    if (!inRange(pkt.src, parseRange(r.src))) return `the source ${s(pkt.src)} isn't in ${r.src}`;
+    if (!inRange(pkt.dst, parseRange(r.dst))) return `the destination ${s(pkt.dst)} isn't in ${r.dst}`;
+    if (r.proto !== 'any' && r.proto !== pkt.proto) return `it is for ${r.proto.toUpperCase()} and this packet is ${pkt.proto.toUpperCase()}`;
+    if (r.port && r.proto !== 'any' && r.proto !== 'icmp' && Number(r.port) !== pkt.port) return `it is for port ${r.port} and this packet is for port ${pkt.port}`;
+    return null;
+  }
+
+  // First matching rule wins. With at least one rule, anything unmatched is denied.
+  function checkAcl(rules, pkt) {
+    const misses = [];
+    for (let k = 0; k < rules.length; k++) {
+      const why = ruleMiss(rules[k], pkt);
+      if (why) { misses.push({ index: k, rule: rules[k], why }); continue; }
+      const res = { allow: rules[k].action === 'permit', index: k, rule: rules[k], misses };
+      // A specific permit further down that would have matched, hidden by this deny: the classic ordering mistake.
+      // (The catch-all "permit any → any" doesn't count: denies above it are the point.)
+      if (!res.allow) {
+        const catchAll = r => parseRange(r.src).any && parseRange(r.dst).any;
+        const j = rules.findIndex((r, i) => i > k && r.action === 'permit' && !catchAll(r) && !ruleMiss(r, pkt));
+        if (j >= 0) res.shadowed = { index: j, rule: rules[j] };
+      }
+      return res;
+    }
+    return { allow: false, index: -1, misses };
+  }
+
   function fail(res, code, dev, extra) {
     res.ok = false;
     res.fail = Object.assign({ code, dev, pkt: Object.assign({}, res.pkt) }, extra || {});
@@ -279,6 +328,12 @@
       if (inIf && kind === 'host') return fail(res, 'notrouter', devId);
       const r = route(T, devId, pkt.dst);
       if (r.err) return fail(res, r.err, devId, { iface: r.iface });
+      // Access rules check new connections passing through the router. Replies are let back automatically.
+      const acl = kind === 'router' && inIf && !ctx.reply && T.devs[devId].config.acl;
+      if (acl && acl.length) {
+        const a = checkAcl(acl, pkt);
+        if (!a.allow) return fail(res, 'acl', devId, { acl: a });
+      }
       if (kind === 'router' && r.iface.role === 'wan' && r.iface.nat && pkt.src !== r.iface.ip && (!inIf || inIf.role !== 'wan')) {
         ctx.nat.push({ inside: pkt.src, outside: r.iface.ip, remote: pkt.dst });
         pkt.src = r.iface.ip;
@@ -322,6 +377,7 @@
     const dport = req.pkt.port;
     out.svc = service(T, req, proto, dport);
     if (!out.svc.ok) { out.stage = 'service'; out.fail = { code: 'refused', dev: req.dev, port: dport, pkt: Object.assign({}, req.pkt) }; return out; }
+    ctx.reply = true;
     const rep = walk(T, req.dev, { src: req.pkt.dst, dst: req.pkt.src, proto, port: dport }, ctx);
     out.rep = rep;
     if (!rep.ok) { out.stage = 'reply'; out.fail = rep.fail; return out; }
@@ -463,6 +519,21 @@
         break;
       case 'dnsfail': msg = `${n} couldn't get an answer from its DNS server ${s(f.server)}. ` + explain(T, f.inner, f.stage); break;
       case 'upstream': msg = `${n} relays DNS questions to its own DNS server, but that failed. ` + explain(T, f.inner, f.stage); break;
+      case 'acl': {
+        const a = f.acl, p = f.pkt;
+        const what = `${p.proto.toUpperCase()}${p.proto === 'icmp' ? ' (ping)' : ' port ' + p.port} from ${s(p.src)} to ${s(dst)}`;
+        msg = a.index >= 0
+          ? `${n}'s access rules blocked ${what}. Rule ${a.index + 1} “${ruleText(a.rule)}” matched it.`
+          : `${n}'s access rules blocked ${what}. No rule matched, so the hidden “deny everything else” at the end of the list blocked it.`;
+        if (a.shadowed) {
+          msg += ` Rule ${a.shadowed.index + 1} “${ruleText(a.shadowed.rule)}” would have allowed it, but rule ${a.index + 1} comes first, and the first match wins.`;
+        } else {
+          // Permits for this destination that the player probably meant to apply, and why they didn't.
+          const near = a.misses.filter(m => m.rule.action === 'permit' && inRange(p.dst, parseRange(m.rule.dst))).slice(0, 2);
+          if (near.length) msg += ' ' + near.map(m => `Rule ${m.index + 1} “${ruleText(m.rule)}” didn't apply because ${m.why}.`).join(' ');
+        }
+        break;
+      }
       case 'ttl': msg = 'The packet went round in a loop until it expired.'; break;
       default: msg = 'The reply arrived somewhere unexpected.';
     }
@@ -483,6 +554,6 @@
 
   NG.Sim = {
     build, route, transact, resolve, browse, openShare, testPort, shareHost, externalVisit, l2path, explain, usable, dnsServersOf,
-    listening, svcByPort, SERVICES, VIRTUAL, ISP, REMOTE,
+    listening, svcByPort, parseRange, ruleText, checkAcl, SERVICES, VIRTUAL, ISP, REMOTE,
   };
 })();

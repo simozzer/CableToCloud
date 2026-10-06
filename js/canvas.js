@@ -116,18 +116,26 @@
     layers.devs.innerHTML = G.net.devices.map(devSvg).join('');
   };
 
-  function labelPos(a, b) {
+  const labelW = text => text.length * 6.6 + 10;
+
+  function labelPos(a, b, text) {
     const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1;
     // Put the label just outside the device's box (icon above, name/IP text below).
+    // Routers can have several wide address lines, so size the box from the device's own labels.
+    // The address lines sit below the icon, so they only get in the way of cables heading downwards.
     const ux = dx / len, uy = dy / len;
-    const tx = ux ? 52 / Math.abs(ux) : Infinity;
-    const ty = uy > 0 ? 66 / uy : uy < 0 ? 38 / -uy : Infinity;
-    const t = Math.min(0.42, (Math.min(tx, ty) + 10) / len);
+    const lines = uy > 0.3 ? ipLabels(a) : [], widest = Math.max(0, ...lines.map(l => l.text.length));
+    const clearX = Math.max(52, widest * 3.3 + labelW(text) / 2 + 4);
+    const clearDown = Math.max(66, 53 + (lines.length - 1) * 13 + 14);
+    const tx = ux ? clearX / Math.abs(ux) : Infinity;
+    const ty = uy > 0 ? clearDown / uy : uy < 0 ? 38 / -uy : Infinity;
+    // On short cables, keep each label on its own half so the two ends never overlap.
+    const t = Math.min(0.42, 0.5 - (labelW(text) / 2 + 3) / len, (Math.min(tx, ty) + 10) / len);
     return { x: a.x + dx * t, y: a.y + dy * t };
   }
 
   function portLabel(p, text) {
-    const w = text.length * 6.6 + 10;
+    const w = labelW(text);
     return `<g class="port-label" transform="translate(${p.x},${p.y})"><rect x="${-w / 2}" y="-8" width="${w}" height="16" rx="4"/><text y="4">${esc(text)}</text></g>`;
   }
 
@@ -139,7 +147,7 @@
     return `<g class="link ${wan ? 'wan' : ''} ${sel ? 'sel' : ''}" data-link="${l.id}">
       <line class="link-hit" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>
       <line class="link-line" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>
-      ${portLabel(labelPos(a, b), l.a.port)}${portLabel(labelPos(b, a), l.b.port)}
+      ${portLabel(labelPos(a, b, l.a.port), l.a.port)}${portLabel(labelPos(b, a, l.b.port), l.b.port)}
     </g>`;
   }
 
@@ -211,9 +219,9 @@
     const g = document.createElementNS(NS, 'g');
     g.setAttribute('class', 'flash ' + cls);
     g.setAttribute('transform', `translate(${d.x},${d.y})`);
-    g.innerHTML = cls === 'bad'
-      ? '<circle r="24"/><path d="M-9 -9 L9 9 M9 -9 L-9 9"/>'
-      : '<circle r="24"/><path d="M-9 0 L-3 7 L10 -7"/>';
+    g.innerHTML = cls === 'bad' ? '<circle r="24"/><path d="M-9 -9 L9 9 M9 -9 L-9 9"/>'
+      : cls === 'block' ? '<circle r="24"/><path d="M-12 0 L12 0"/>'
+        : '<circle r="24"/><path d="M-9 0 L-3 7 L10 -7"/>';
     layers.anim.appendChild(g);
     setTimeout(() => g.remove(), 1400);
   };

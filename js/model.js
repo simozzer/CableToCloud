@@ -44,7 +44,7 @@
       ],
       cfg: () => ({
         ifaces: { 'Gi0/0': wanIf(), 'Gi0/1': lanIf('', ''), 'Gi0/2': lanIf('', ''), 'Gi0/3': lanIf('', '') },
-        nat: true, dnsProxy: false, portForwards: [],
+        nat: true, dnsProxy: false, portForwards: [], acl: [],
       }),
     },
     internet: { label: 'Internet', kind: 'internet', prefix: 'Internet', ports: ['ISP'], desc: 'Your Internet Service Provider and the rest of the Internet.', cfg: () => ({}) },

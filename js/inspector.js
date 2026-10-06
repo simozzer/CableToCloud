@@ -218,8 +218,10 @@
   function renderRouter(d) {
     const def = Types[d.type], lock = d.lockedConfig;
     const lans = def.ifaces.filter(f => f.role === 'lan');
-    const pf = !lock && G().level.features && G().level.features.portForward;
+    const feat = G().level.features || {};
+    const pf = !lock && feat.portForward, acl = !lock && feat.acl && d.config.acl;
     root.innerHTML = head(d) + `
+      ${acl ? aclHtml(d) : ''}
       ${lock ? '<p class="note">This router is managed by your Internet provider. You can look, but not change its settings.</p>'
         : lans.map(f => lanForm(f, d.config.ifaces[f.name])).join('') + '<div class="btn-row"><button class="primary" id="f-save">Save router settings</button></div>'}
       ${pf ? portForwardHtml(d) : ''}
@@ -229,6 +231,7 @@
     bindCommon(d);
     if (lock) return;
     if (pf) bindPortForward(d);
+    if (acl) bindAcl(d);
 
     const save = $('#f-save', root);
     const update = () => {
@@ -294,6 +297,57 @@
       G().log(`${d.name}: port forward ${proto.toUpperCase()} ${port} → ${ip}:${to}`);
       G().recompute();
       I.render();
+    };
+  }
+
+  function aclHtml(d) {
+    const rules = d.config.acl;
+    const what = r => r.proto === 'any' ? 'any protocol' : r.proto === 'icmp' ? 'ICMP (ping)'
+      : `${r.proto.toUpperCase()} ${r.port ? 'port ' + esc(r.port) : 'any port'}`;
+    return `<div class="router-if acl"><h4>Access rules <small class="muted">(firewall)</small></h4>
+      <p class="small muted">Checked, top to bottom, for every new connection that passes through the router. The <b>first</b> rule that matches decides.
+      If there are any rules, anything that matches none of them is <b>denied</b>. Replies to allowed connections always get back.</p>
+      ${rules.length ? `<ol class="acl-list">
+        ${rules.map((r, k) => `<li><span class="acl-n">${k + 1}</span>
+          <span class="acl-rule"><span class="acl-${r.action}">${r.action}</span> <code>${esc(r.src)}</code> → <code>${esc(r.dst)}</code>
+            <small class="muted">${what(r)}</small></span>
+          <span class="acl-btns"><button class="small-btn" data-acl-up="${k}" ${k ? '' : 'disabled'} title="Move up">▲</button><button class="small-btn" data-acl-down="${k}" ${k < rules.length - 1 ? '' : 'disabled'} title="Move down">▼</button><button class="danger small-btn" data-acl-del="${k}" title="Remove">✕</button></span></li>`).join('')}
+        <li class="muted"><span class="acl-n"></span><span class="acl-rule"><i>deny everything else</i></span></li></ol>`
+        : '<p class="small muted">No rules: the router forwards everything.</p>'}
+      <div class="acl-add">
+        <select id="acl-action" title="Action"><option value="permit">permit</option><option value="deny">deny</option></select>
+        <select id="acl-proto" title="Protocol"><option value="any">any protocol</option><option value="tcp">TCP</option><option value="udp">UDP</option><option value="icmp">ICMP (ping)</option></select>
+        <input id="acl-port" placeholder="port" spellcheck="false" title="Port (empty = any)">
+        <input id="acl-src" class="wide" placeholder="source: any, 10.1.20.0/24 or one address" spellcheck="false">
+        <input id="acl-dst" class="wide" placeholder="destination: any, 10.1.99.30 or a network" spellcheck="false">
+        <button id="acl-add" class="wide">Add rule</button>
+      </div>
+      <div class="errors" id="acl-err"></div></div>`;
+  }
+
+  function bindAcl(d) {
+    const rules = d.config.acl, S = NG.Sim;
+    const changed = msg => { G().log(`${d.name}: ${msg}`); G().recompute(); I.render(); };
+    const move = (k, by) => { const [r] = rules.splice(k, 1); rules.splice(k + by, 0, r); changed(`moved rule “${S.ruleText(r)}” to position ${k + by + 1}`); };
+    $$('[data-acl-up]', root).forEach(b => { b.onclick = () => move(Number(b.dataset.aclUp), -1); });
+    $$('[data-acl-down]', root).forEach(b => { b.onclick = () => move(Number(b.dataset.aclDown), 1); });
+    $$('[data-acl-del]', root).forEach(b => {
+      b.onclick = () => { const [r] = rules.splice(Number(b.dataset.aclDel), 1); changed(`removed access rule “${S.ruleText(r)}”`); };
+    });
+    const protoSel = $('#acl-proto', root), portIn = $('#acl-port', root);
+    const syncPort = () => { const on = protoSel.value === 'tcp' || protoSel.value === 'udp'; portIn.disabled = !on; if (!on) portIn.value = ''; };
+    protoSel.onchange = syncPort;
+    syncPort();
+    $('#acl-add', root).onclick = () => {
+      const norm = v => { v = v.trim().toLowerCase(); return v === '' ? 'any' : v; };
+      const src = norm($('#acl-src', root).value), dst = norm($('#acl-dst', root).value), proto = protoSel.value, port = portIn.value.trim();
+      const bad = v => { const r = S.parseRange(v); return !r ? `“${v}” isn’t valid. Use any, an address (10.1.99.30) or a network (10.1.20.0/24).`
+        : r.aligned === false ? `“${v}” isn’t the start of a network. Did you mean ${IP.str(r.net)}/${IP.prefix(r.mask)}?` : ''; };
+      const err = bad(src) || bad(dst) || (port && !(/^\d+$/.test(port) && +port >= 1 && +port <= 65535) ? 'Enter a port from 1 to 65535, or leave it empty for any port.' : '');
+      if (err) { $('#acl-err', root).textContent = '⚠ ' + err; return; }
+      const r = { action: $('#acl-action', root).value, src, dst, proto, port };
+      rules.push(r);
+      changed(`added access rule ${rules.length}: “${S.ruleText(r)}”`);
     };
   }
 
