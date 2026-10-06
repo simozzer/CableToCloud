@@ -32,6 +32,9 @@ Open `index.html` in a web browser. There is nothing to install or build, and it
 13. **One Server, Many Doors**: ports and services: why the intranet works but the shared drive doesn't
 14. **HR Only**: access rules (a firewall) so only HR can reach HR's file server
 15. **Locked Out**: troubleshoot a broken set of access rules
+16. **Guests Welcome**: guest Wi-Fi that reaches the Internet and nothing else
+17. **Demilitarised Zone**: move the public web server into a DMZ
+18. **Two Floors, One Cable**: VLANs, access ports and trunks on managed switches
 
 ## Code
 
@@ -41,7 +44,7 @@ Plain HTML, CSS and JavaScript, with no dependencies.
 | --- | --- |
 | `js/ip.js` | IPv4 address and subnet maths |
 | `js/model.js` | Device types and the network data model |
-| `js/sim.js` | The simulation: DHCP, ARP, routing, NAT, port forwarding, DNS, services and ports, access rules, and failure explanations |
+| `js/sim.js` | The simulation: DHCP, ARP, routing, NAT, port forwarding, DNS, services and ports, access rules, VLANs, and failure explanations |
 | `js/levels.js` | Level definitions: setup, briefing, objectives, hints |
 | `js/canvas.js` | SVG workspace, dragging, cabling and packet animation |
 | `js/inspector.js` | Device settings panel |
@@ -52,4 +55,4 @@ Plain HTML, CSS and JavaScript, with no dependencies.
 
 ## Ideas for the future
 
-Guest isolation, VLANs, a DMZ, containers and cloud networking (VPCs, security groups, load balancers).
+Virtual machines (bridged, NAT, host-only), SSH and jump hosts, containers, SSH tunnels and cloud networking (VPCs, security groups, load balancers).

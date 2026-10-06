@@ -44,6 +44,8 @@
     ${Array.from({ length: 8 }, (_, k) => `<rect class="ic-port" x="${-28 + k * 7}" y="5" width="5" height="5" rx="1"/>`).join('')}
   </g>`;
 
+  I.mswitch = () => I.switch().replace('</g>', '<text class="ic-badge" x="0" y="-18">VLAN</text></g>');
+
   const routerBox = antennas => `<g class="ic">
     ${antennas ? `<line class="ic-ant" x1="-18" y1="-4" x2="-23" y2="-26"/><line class="ic-ant" x1="18" y1="-4" x2="23" y2="-26"/>
     <path class="ic-wave" d="M-6 -15 Q0 -20 6 -15 M-11 -20 Q0 -29 11 -20"/>` : ''}

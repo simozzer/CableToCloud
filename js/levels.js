@@ -1146,5 +1146,269 @@
       </ul>`,
   });
 
+  // ---------- Shared helpers for levels 16+ ----------
+  const lanCfg = (net, dns, dhcp = true) => ({ ip: net + '.1', mask: '255.255.255.0', dhcp: { enabled: dhcp, start: net + '.100', end: net + '.199', dns } });
+  const srv = (M, net, name, tag, x, y, ip, extra = {}) => M.add(net, 'server', x, y, {
+    locked: true, name, tag, hostMode: 'static', lockedConfig: !!extra.lockedConfig,
+    config: Object.assign({ ip, mask: '255.255.255.0', gw: ip.replace(/\.\d+$/, '.1'), dns: '10.1.99.53' }, extra.config || {}),
+  });
+  const devIp = (c, tag) => { const d = tagged(c, tag); return d ? H.ifc(c, d).ip : null; };
+  const tx = (c, from, ip, proto, port) => (ip == null ? { ok: false } : NG.Sim.transact(c.T, tagged(c, from).id, ip, proto, port));
+  const officeRouter = c => c.net.devices.find(d => d.type === 'officerouter');
+
+  // ---------- Level 16: guest isolation ----------
+  Levels.push({
+    id: 'guests',
+    title: 'Guests Welcome',
+    subtitle: 'Guest Wi-Fi that reaches the Internet and nothing else',
+    palette: {},
+    features: { acl: true },
+    setup(net, M) {
+      const inet = M.add(net, 'internet', 90, 300, { locked: true });
+      const r = M.add(net, 'officerouter', 280, 300, {
+        locked: true,
+        config: { ifaces: { 'Gi0/1': lanCfg('10.1.10', '10.1.99.53'), 'Gi0/2': lanCfg('10.1.50', '10.1.99.53'), 'Gi0/3': { ip: '10.1.99.1', mask: '255.255.255.0' } } },
+      });
+      M.connect(net, inet, 'ISP', r, 'Gi0/0', { locked: true });
+      const sw = [['Staff-SW', 'Gi0/1', 100], ['Guest-SW', 'Gi0/2', 300], ['Servers-SW', 'Gi0/3', 480]].map(([name, port, y]) => {
+        const s = M.add(net, 'switch', 520, y, { locked: true, name });
+        M.connect(net, r, port, s, 'P1', { locked: true });
+        return s;
+      });
+      const pc = M.add(net, 'pc', 780, 100, { locked: true, name: 'Staff-PC', tag: 'staff', hostMode: 'dhcp' });
+      const lap = M.add(net, 'laptop', 780, 300, { locked: true, name: 'Guest-Laptop', tag: 'guest', hostMode: 'dhcp' });
+      const dns = srv(M, net, 'DNS1', 'dns1', 780, 410, '10.1.99.53', { config: { dns: '8.8.8.8', services: { dns: true },
+        dnsRecords: [{ name: 'files.office', ip: '10.1.99.20' }, { name: 'intranet.office', ip: '10.1.99.20' }] } });
+      const fs = srv(M, net, 'FS1', 'fs', 780, 530, '10.1.99.20', { lockedConfig: true, config: { services: { web: true, files: true } } });
+      M.connect(net, sw[0], 'P2', pc, 'eth0', { locked: true });
+      M.connect(net, sw[1], 'P2', lap, 'eth0', { locked: true });
+      M.connect(net, sw[2], 'P2', dns, 'eth0', { locked: true });
+      M.connect(net, sw[2], 'P3', fs, 'eth0', { locked: true });
+    },
+    briefing: `
+      <p>The office has added <b>guest Wi-Fi</b> on its own network, Gi0/2. Visitors get online, but there are no rules yet, so they can also
+      reach staff computers and the company file server. Lock the guest network down so guests get the <b>Internet and nothing else</b>.</p>
+      <div class="box"><b>Network plan</b>
+        <table class="kv">
+          <tr><th>Gi0/1: Staff</th><td><code>10.1.10.0/24</code>, DHCP</td></tr>
+          <tr><th>Gi0/2: Guests</th><td><code>10.1.50.0/24</code>, DHCP</td></tr>
+          <tr><th>Gi0/3: Servers</th><td><code>10.1.99.0/24</code>: DNS1 <code>.53</code>, FS1 <code>.20</code> (<code>files.office</code>, <code>intranet.office</code>)</td></tr>
+        </table></div>
+      <div class="concepts">
+        <div class="concept"><h5>Isolate by default</h5>
+          <p>Guest devices are unknown and untrusted. The safe design is that guests can reach the Internet, but can’t <b>start</b> a connection to
+          anything inside, not even to see what is there.</p></div>
+        <div class="concept"><h5>One rule, many networks</h5>
+          <p>Every inside network here is part of <code>10.0.0.0/8</code>. One rule with that destination covers Staff, Servers and any
+          10.x network you add later. That is subnetting working for you.</p></div>
+        <div class="concept"><h5>Don’t forget DNS</h5>
+          <p>Guests need a DNS server too. If theirs is inside the company, blocking the inside blocks their DNS. Hand guests a <b>public</b>
+          DNS server instead, so they never learn internal names.</p></div>
+      </div>`,
+    objectives: [
+      { text: 'From Guest-Laptop, <code>open \\\\files.office</code>. It works, and it shouldn’t!',
+        check: c => H.ev(c, e => e.type === 'open' && e.ok && e.dev === tagged(c, 'guest').id) },
+      { text: 'Guests can’t reach the file server or the intranet',
+        check: c => blocked(tx(c, 'guest', P('10.1.99.20'), 'tcp', 445)) && blocked(tx(c, 'guest', P('10.1.99.20'), 'tcp', 80)) },
+      { text: 'Guests can’t reach staff computers (try <code>ping</code> to Staff-PC)',
+        check: c => blocked(tx(c, 'guest', devIp(c, 'staff'))) },
+      { text: 'Guests can still browse <code>www.example.com</code>',
+        check: c => canBrowse(c, tagged(c, 'guest')) },
+      { text: 'Guests can’t even look up internal names like <code>files.office</code>',
+        check: c => { const d = tagged(c, 'guest'); return H.ifc(c, d).ip != null && !NG.Sim.resolve(c.T, d.id, 'files.office').ok && canBrowse(c, d); } },
+      { text: 'Staff can still open <code>\\\\files.office</code> and browse <code>www.example.com</code>',
+        check: c => NG.Sim.openShare(c.T, tagged(c, 'staff').id, '\\\\files.office').ok && canBrowse(c, tagged(c, 'staff')) },
+    ],
+    hints: [
+      'On Guest-Laptop, run <code>open \\\\files.office</code> and <code>ping</code> Staff-PC’s address. Both work: nothing stops guests yet.',
+      'On the router, add <b>deny</b> <code>10.1.50.0/24</code> → <code>10.0.0.0/8</code>, any protocol. Then <b>permit</b> <code>any</code> → <code>any</code> so everything else keeps working.',
+      'Now guests can’t browse at all. <code>browse www.example.com</code> on Guest-Laptop: the Why? line shows their DNS server, 10.1.99.53, is inside and blocked.',
+      'In the router’s <b>Gi0/2</b> settings, change the DHCP <b>DNS server</b> to <code>8.8.8.8</code> and save. Guests get a public DNS server, which also knows nothing about <code>files.office</code>.',
+    ],
+    learned: `
+      <ul>
+        <li>A guest network should reach the <b>Internet only</b>: deny guests → every inside network, then permit the rest.</li>
+        <li>One rule with a big prefix (<code>10.0.0.0/8</code>) covers many networks at once, including future ones.</li>
+        <li>Guests need DNS too. Give them a <b>public</b> DNS server rather than opening a hole to an internal one.</li>
+        <li>Rules only stop guests <i>starting</i> connections. Staff browsing the web still works because replies always get back.</li>
+      </ul>`,
+  });
+
+  // ---------- Level 17: DMZ ----------
+  const WEB_OLD = P('10.1.99.80'), WEB_NEW = P('10.1.200.80');
+  const web17 = c => tagged(c, 'web');
+
+  Levels.push({
+    id: 'dmz',
+    title: 'Demilitarised Zone',
+    subtitle: 'Move the public web server into a DMZ',
+    palette: {},
+    features: { acl: true, portForward: true },
+    setup(net, M) {
+      const inet = M.add(net, 'internet', 90, 300, { locked: true });
+      const r = M.add(net, 'officerouter', 280, 300, {
+        locked: true,
+        config: {
+          ifaces: { 'Gi0/1': lanCfg('10.1.10', '10.1.99.53'), 'Gi0/2': { ip: '10.1.99.1', mask: '255.255.255.0' } },
+          portForwards: [{ proto: 'tcp', port: '80', ip: '10.1.99.80', toPort: '80' }],
+        },
+      });
+      M.connect(net, inet, 'ISP', r, 'Gi0/0', { locked: true });
+      const sw = [['Staff-SW', 'Gi0/1', 100], ['Servers-SW', 'Gi0/2', 300], ['DMZ-SW', 'Gi0/3', 500]].map(([name, port, y]) => {
+        const s = M.add(net, 'switch', 520, y, { locked: true, name });
+        M.connect(net, r, port, s, 'P1', { locked: true });
+        return s;
+      });
+      const pc = M.add(net, 'pc', 780, 100, { locked: true, name: 'Staff-PC', tag: 'staff', hostMode: 'dhcp' });
+      const dns = srv(M, net, 'DNS1', 'dns1', 780, 230, '10.1.99.53', { config: { dns: '8.8.8.8', services: { dns: true },
+        dnsRecords: [{ name: 'files.office', ip: '10.1.99.20' }, { name: 'shop.office', ip: '10.1.99.80' }] } });
+      const fs = srv(M, net, 'FS1', 'fs', 780, 340, '10.1.99.20', { lockedConfig: true, config: { services: { files: true } } });
+      const web = srv(M, net, 'WebServer', 'web', 780, 470, '10.1.99.80', { config: { services: { web: true } } });
+      M.connect(net, sw[0], 'P2', pc, 'eth0', { locked: true });
+      M.connect(net, sw[1], 'P2', dns, 'eth0', { locked: true });
+      M.connect(net, sw[1], 'P3', fs, 'eth0', { locked: true });
+      M.connect(net, sw[1], 'P4', web, 'eth0');
+    },
+    briefing: `
+      <p>The company website runs on <b>WebServer</b>, and the router forwards web traffic from the Internet to it. But WebServer sits on the
+      <b>Servers</b> network, right next to the file server. Public servers are the ones attackers try hardest to break into. If someone takes over
+      WebServer, nothing stops them reaching your files. Move it into a <b>DMZ</b>.</p>
+      <div class="box"><b>Network plan</b>
+        <table class="kv">
+          <tr><th>Gi0/1: Staff</th><td><code>10.1.10.0/24</code></td></tr>
+          <tr><th>Gi0/2: Servers</th><td><code>10.1.99.0/24</code>: DNS1 <code>.53</code>, FS1 <code>.20</code></td></tr>
+          <tr><th>Gi0/3: DMZ</th><td><code>10.1.200.0/24</code>, router <code>10.1.200.1</code> (new)</td></tr>
+          <tr><th>WebServer</th><td>moves to <code>10.1.200.80</code>, DNS <code>8.8.8.8</code>. Staff know it as <code>shop.office</code></td></tr>
+        </table></div>
+      <div class="concepts">
+        <div class="concept"><h5>DMZ</h5>
+          <p>A <b>demilitarised zone</b> is a network for servers the Internet can reach. It sits between the Internet and your inside networks,
+          with rules on both sides.</p></div>
+        <div class="concept"><h5>Trust flows one way</h5>
+          <p>Inside → DMZ: allowed (staff can use the website). DMZ → inside: <b>denied</b>. A web server never needs to start a connection to your
+          file server, so if it is hacked, the attacker is stuck in the DMZ.</p></div>
+        <div class="concept"><h5>Moving a server touches everything</h5>
+          <p>A new address means updating every place that points at the old one: the <b>port forward</b>, the <b>DNS record</b> and the server’s own
+          settings.</p></div>
+      </div>`,
+    objectives: [
+      { text: 'Pretend WebServer was hacked: from its terminal, <code>open \\\\10.1.99.20</code>. The attacker can reach your files!',
+        check: c => H.ev(c, e => e.type === 'open' && e.ok && e.dev === web17(c).id) },
+      { text: 'Configure <b>Gi0/3</b> (DMZ) as <code>10.1.200.1</code> / <code>255.255.255.0</code>',
+        check: c => ifOk(c, 'Gi0/3', '10.1.200.1') },
+      { text: 'Move WebServer to DMZ-SW with the address <code>10.1.200.80</code>',
+        check: c => { const i = H.ifc(c, web17(c)), g = routerIf(c, 'Gi0/3'); return i.ip === WEB_NEW && g && i.seg === g.seg && i.gw === P('10.1.200.1'); } },
+      { text: 'Customers on the Internet can reach the website again (update the port forward)',
+        check: c => NG.Sim.externalVisit(c.T).ok },
+      { text: 'Staff can <code>browse shop.office</code> (update DNS1’s record)',
+        check: c => NG.Sim.browse(c.T, tagged(c, 'staff').id, 'shop.office').ok && hasRecord(c, 'shop.office', WEB_NEW) },
+      { text: 'WebServer can’t start connections to the Servers or Staff networks',
+        check: c => blocked(tx(c, 'web', P('10.1.99.20'), 'tcp', 445)) && blocked(tx(c, 'web', devIp(c, 'staff'))) && blocked(tx(c, 'web', P('10.1.99.53'), 'udp', 53)) },
+      { text: 'Everyone can still reach the Internet, and staff can still open <code>\\\\files.office</code>',
+        check: c => canBrowse(c, tagged(c, 'staff')) && tx(c, 'web', P('8.8.8.8')).ok && NG.Sim.openShare(c.T, tagged(c, 'staff').id, '\\\\files.office').ok },
+      { text: 'Prove it: from WebServer, <code>test 10.1.99.20 445</code> is now <b>FILTERED</b>',
+        check: c => H.ev(c, e => e.type === 'test' && e.dev === web17(c).id && e.ip === P('10.1.99.20') && e.port === 445 && e.code === 'acl') },
+    ],
+    hints: [
+      'Click WebServer and run <code>open \\\\10.1.99.20</code>. Then click the router and give <b>Gi0/3</b> the address <code>10.1.200.1</code> / <code>255.255.255.0</code> (no DHCP: servers are static).',
+      'Click WebServer’s cable to Servers-SW and press <b>Unplug cable</b>. Cable WebServer to DMZ-SW. Set its IP to <code>10.1.200.80</code>, gateway <code>10.1.200.1</code>, DNS <code>8.8.8.8</code>.',
+      'On the router, remove the old port forward and add TCP <code>80</code> → <code>10.1.200.80</code> port <code>80</code>. On DNS1, remove <code>shop.office</code> and add it again with <code>10.1.200.80</code>.',
+      'Access rules: <b>deny</b> <code>10.1.200.0/24</code> → <code>10.1.0.0/16</code>, then <b>permit</b> <code>any</code> → <code>any</code>. Staff → DMZ and Internet → DMZ still work. Test from WebServer with <code>test 10.1.99.20 445</code>.',
+    ],
+    learned: `
+      <ul>
+        <li>Servers the Internet can reach belong in a <b>DMZ</b>, separate from inside networks.</li>
+        <li>Rules let the inside reach the DMZ, but stop the DMZ <b>starting</b> connections inward. A hacked web server is contained.</li>
+        <li>Port forwarding and access rules work together: the forward picks the server, the rules decide what that server may do.</li>
+        <li>Moving a server means updating its address, the <b>port forward</b> and its <b>DNS record</b>.</li>
+        <li>DMZ servers should use <b>public</b> DNS, so they don’t need a hole through to internal servers.</li>
+      </ul>`,
+  });
+
+  // ---------- Level 18: VLANs ----------
+  const SALES18 = P('10.1.10.0'), HR18 = P('10.1.20.0');
+  const trunkOk = (c, name) => {
+    const sw = c.net.devices.find(d => d.name === name), v = sw && NG.Sim.portVlan(sw, 'P8');
+    return !!v && v.trunk && (v.allowed == null || (v.allowed.includes(10) && v.allowed.includes(20)));
+  };
+
+  Levels.push({
+    id: 'vlans',
+    title: 'Two Floors, One Cable',
+    subtitle: 'VLANs: several networks on the same switches',
+    palette: {},
+    setup(net, M) {
+      const inet = M.add(net, 'internet', 90, 330, { locked: true });
+      const r = M.add(net, 'officerouter', 280, 330, {
+        locked: true,
+        config: { ifaces: { 'Gi0/1': lanCfg('10.1.10', '8.8.8.8'), 'Gi0/2': lanCfg('10.1.20', '8.8.8.8') } },
+      });
+      M.connect(net, inet, 'ISP', r, 'Gi0/0', { locked: true });
+      const f1 = M.add(net, 'mswitch', 540, 190, { locked: true, name: 'Floor1-SW' });
+      const f2 = M.add(net, 'mswitch', 540, 470, { locked: true, name: 'Floor2-SW' });
+      M.connect(net, r, 'Gi0/1', f1, 'P1', { locked: true });
+      M.connect(net, r, 'Gi0/2', f1, 'P2', { locked: true });
+      M.connect(net, f1, 'P8', f2, 'P8', { locked: true });
+      [['Sales-PC1', 'sales1', 'pc', f1, 'P3', 800, 90], ['HR-PC1', 'hr1', 'laptop', f1, 'P4', 800, 260],
+        ['Sales-PC2', 'sales2', 'pc', f2, 'P3', 800, 400], ['HR-PC2', 'hr2', 'laptop', f2, 'P4', 800, 560]].forEach(([name, tag, type, sw, port, x, y]) => {
+        const d = M.add(net, type, x, y, { locked: true, name, tag, hostMode: 'dhcp' });
+        M.connect(net, sw, port, d, 'eth0', { locked: true });
+      });
+    },
+    briefing: `
+      <p>Sales and HR are spread over <b>two floors</b>, with one switch per floor and a single cable between them. Sales and HR must be
+      <b>separate networks</b>, but nobody wants to buy a second set of switches and run a second cable. Right now everything is one big network:
+      HR’s laptops are getting Sales addresses.</p>
+      <div class="box"><b>Network plan</b>
+        <table class="kv">
+          <tr><th>VLAN 10: Sales</th><td><code>10.1.10.0/24</code>, router Gi0/1 (Floor1-SW P1)</td></tr>
+          <tr><th>VLAN 20: HR</th><td><code>10.1.20.0/24</code>, router Gi0/2 (Floor1-SW P2)</td></tr>
+          <tr><th>P8 on both switches</th><td>the cable between the floors</td></tr>
+        </table></div>
+      <div class="concepts">
+        <div class="concept"><h5>VLAN</h5>
+          <p>A <b>virtual LAN</b> splits one switch into several. Ports in VLAN 10 only talk to other VLAN 10 ports, as if they were on a
+          separate switch. Every port starts in VLAN 1, which is why everything is one network now.</p></div>
+        <div class="concept"><h5>Access ports</h5>
+          <p>A port for one device: a PC, a printer or a router interface. It belongs to exactly <b>one</b> VLAN, and the device doesn’t
+          know VLANs exist.</p></div>
+        <div class="concept"><h5>Trunk ports</h5>
+          <p>A link between switches that carries <b>several</b> VLANs. Each frame gets a small <b>tag</b> (802.1Q) with its VLAN number, so the
+          switch at the other end knows which VLAN it belongs to. Both ends must be trunks carrying the same VLANs.</p></div>
+        <div class="concept"><h5>VLANs still need a router</h5>
+          <p>Each VLAN is its own network with its own subnet. Traffic between VLANs goes through the router, just like between two
+          physical networks, which is where access rules can control it.</p></div>
+      </div>
+      <p class="muted small">Click a switch to set each port’s mode and VLAN, then press <b>Save switch settings</b>. Cable labels show each port’s VLAN.</p>`,
+    objectives: [
+      { text: 'Run <code>ipconfig</code> on HR-PC1. It got a <b>Sales</b> address!',
+        check: c => H.ev(c, e => e.type === 'ipconfig' && e.dev === tagged(c, 'hr1').id && e.ip != null && IP.same(e.ip, SALES18, M24)) },
+      { text: 'On Floor1-SW, put P1 (router Gi0/1) and Sales-PC1 in <b>VLAN 10</b>, and P2 (router Gi0/2) and HR-PC1 in <b>VLAN 20</b>',
+        check: c => inNet(c, tagged(c, 'sales1'), SALES18) && inNet(c, tagged(c, 'hr1'), HR18) },
+      { text: 'Make P8, the cable between the floors, a <b>trunk</b> carrying VLANs 10 and 20 on <b>both</b> switches',
+        check: c => trunkOk(c, 'Floor1-SW') && trunkOk(c, 'Floor2-SW') },
+      { text: 'On Floor2-SW, put Sales-PC2 in VLAN 10 and HR-PC2 in VLAN 20',
+        check: c => inNet(c, tagged(c, 'sales2'), SALES18) && inNet(c, tagged(c, 'hr2'), HR18) },
+      { text: 'Everyone can browse <code>www.example.com</code>',
+        check: c => ['sales1', 'hr1', 'sales2', 'hr2'].every(t => canBrowse(c, tagged(c, t))) },
+      { text: 'From Sales-PC2, <code>ping</code> HR-PC1: different VLANs, so the packet goes up to the router and back',
+        check: c => H.ev(c, e => e.type === 'ping' && e.ok && e.dev === tagged(c, 'sales2').id && e.dst === devIp(c, 'hr1') && IP.same(e.dst, HR18, M24)) },
+    ],
+    hints: [
+      'Click HR-PC1 and run <code>ipconfig</code>: <code>10.1.10.x</code> is the Sales network. Both router interfaces are in VLAN 1 on the same switch, so they share one network.',
+      'Click Floor1-SW. Leave every port on <b>access</b>. Set P1 and P3 to <code>10</code>, P2 and P4 to <code>20</code>, then save.',
+      'Floor 2 has no addresses now: its PCs are still in VLAN 1. On <b>both</b> switches set P8 to <b>trunk</b> with VLANs <code>10,20</code>. Then on Floor2-SW set P3 to <code>10</code> and P4 to <code>20</code>.',
+      'Run <code>ipconfig</code> on HR-PC1 to find its address, then <code>ping</code> it from Sales-PC2. Watch the packet travel up the trunk to the router and back down.',
+    ],
+    learned: `
+      <ul>
+        <li><b>VLANs</b> split one physical switch into several separate networks.</li>
+        <li><b>Access</b> ports carry one VLAN to a device. <b>Trunk</b> ports carry many VLANs between switches, each frame <b>tagged</b> with its VLAN number (802.1Q).</li>
+        <li>Both ends of a trunk must agree on which VLANs it carries.</li>
+        <li>Each VLAN is a separate network with its own subnet. Traffic between VLANs is <b>routed</b>, so access rules still apply.</li>
+        <li>Every port starts in <b>VLAN 1</b>. A switch that has never been configured is one big network.</li>
+      </ul>`,
+  });
+
   NG.Levels = Levels;
 })();

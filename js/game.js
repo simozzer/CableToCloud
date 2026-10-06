@@ -310,7 +310,7 @@
       setTip(TOOL_TIPS.cable);
       G.recompute();
     };
-    if (Types[d.type].kind === 'router') NG.Canvas.pickPort(d, choose);
+    if (Types[d.type].kind === 'router' || d.type === 'mswitch') NG.Canvas.pickPort(d, choose);
     else choose(free[0]);
   };
 

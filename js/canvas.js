@@ -112,7 +112,11 @@
   // ---------- Drawing ----------
 
   C.render = function () {
-    layers.links.innerHTML = G.net.links.map(linkSvg).join('');
+    // Several cables between the same two devices are drawn side by side, not on top of each other.
+    const pairs = {};
+    G.net.links.forEach(l => { const k = [l.a.dev, l.b.dev].sort().join('|'); (pairs[k] = pairs[k] || []).push(l.id); });
+    const offset = l => { const ids = pairs[[l.a.dev, l.b.dev].sort().join('|')]; return (ids.indexOf(l.id) - (ids.length - 1) / 2) * 24; };
+    layers.links.innerHTML = G.net.links.map(l => linkSvg(l, offset(l))).join('');
     layers.devs.innerHTML = G.net.devices.map(devSvg).join('');
   };
 
@@ -134,20 +138,34 @@
     return { x: a.x + dx * t, y: a.y + dy * t };
   }
 
-  function portLabel(p, text) {
+  function portLabel(p, text, cls = '') {
     const w = labelW(text);
-    return `<g class="port-label" transform="translate(${p.x},${p.y})"><rect x="${-w / 2}" y="-8" width="${w}" height="16" rx="4"/><text y="4">${esc(text)}</text></g>`;
+    return `<g class="port-label ${cls}" transform="translate(${p.x},${p.y})"><rect x="${-w / 2}" y="-8" width="${w}" height="16" rx="4"/><text y="4">${esc(text)}</text></g>`;
   }
 
-  function linkSvg(l) {
-    const a = G.dev(l.a.dev), b = G.dev(l.b.dev);
+  // Managed switch ports show their VLAN: "P2 v10" or "P8 trunk".
+  function portText(d, port) {
+    if (d.type !== 'mswitch') return { text: port, cls: '' };
+    const v = NG.Sim.portVlan(d, port);
+    return v.trunk ? { text: port + ' trunk', cls: 'trunk' } : v.untagged !== 1 ? { text: `${port} v${v.untagged}`, cls: 'vlan' } : { text: port, cls: '' };
+  }
+
+  function linkSvg(l, off = 0) {
+    let a = G.dev(l.a.dev), b = G.dev(l.b.dev);
     if (!a || !b) return '';
+    if (off) {
+      // Shift the whole cable sideways; the sign follows a fixed device order so parallel cables don't swap sides.
+      const s = l.a.dev < l.b.dev ? 1 : -1, len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+      const nx = -(b.y - a.y) / len * off * s, ny = (b.x - a.x) / len * off * s;
+      a = Object.assign({}, a, { x: a.x + nx, y: a.y + ny });
+      b = Object.assign({}, b, { x: b.x + nx, y: b.y + ny });
+    }
     const wan = a.type === 'internet' || b.type === 'internet';
     const sel = G.sel && G.sel.link === l.id;
     return `<g class="link ${wan ? 'wan' : ''} ${sel ? 'sel' : ''}" data-link="${l.id}">
       <line class="link-hit" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>
       <line class="link-line" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>
-      ${portLabel(labelPos(a, b, l.a.port), l.a.port)}${portLabel(labelPos(b, a, l.b.port), l.b.port)}
+      ${[[a, b, l.a.port], [b, a, l.b.port]].map(([x, y, port]) => { const t = portText(x, port); return portLabel(labelPos(x, y, t.text), t.text, t.cls); }).join('')}
     </g>`;
   }
 

@@ -21,6 +21,11 @@
     },
     printer: { label: 'Printer', kind: 'host', prefix: 'Printer', ports: ['eth0'], desc: 'A network printer.', cfg: m => hostCfg(m) },
     switch: { label: 'Switch', kind: 'switch', prefix: 'Switch', ports: range('P', 8), desc: 'An 8-port switch: joins devices into one local network.', cfg: () => ({}) },
+    mswitch: {
+      label: 'Managed Switch', kind: 'switch', prefix: 'Switch', ports: range('P', 8),
+      desc: 'A managed 8-port switch: each port can be in its own VLAN, or be a trunk that carries several VLANs.',
+      cfg: () => ({ ports: {} }),
+    },
     homerouter: {
       label: 'Home Router', kind: 'router', prefix: 'Router', ports: ['WAN', ...range('LAN', 4)],
       desc: 'A home router: 1 WAN port, 4 LAN ports, DHCP server, DNS relay and NAT.',

@@ -42,36 +42,76 @@
     if (def.kind === 'switch') return [];
     return [{ name: d.ports[0], ports: [d.ports[0]], role: def.kind === 'internet' ? 'isp' : 'host' }];
   }
-  // Ports that share one Ethernet segment inside a device (switch = all ports).
-  const l2Groups = d => (kindOf(d) === 'switch' ? [d.ports] : ifaceDefs(d).map(i => i.ports));
+  // ---------- VLANs ----------
+  // A switch port is either an access port (one VLAN, untagged) or a trunk (VLAN 1 untagged, plus tagged VLANs).
+  // Plain switches have no port settings: every port is an access port in VLAN 1.
+
+  // "10,20", "10-12" or "all" → list of VLAN numbers (null = all).
+  function parseVlans(s) {
+    s = String(s == null ? 'all' : s).trim().toLowerCase();
+    if (s === 'all' || s === '') return null;
+    const out = [];
+    for (const part of s.split(/[\s,]+/).filter(Boolean)) {
+      const m = /^(\d+)(?:-(\d+))?$/.exec(part);
+      if (!m) return undefined;
+      const a = Number(m[1]), b = m[2] ? Number(m[2]) : a;
+      if (a < 1 || b > 4094 || a > b || b - a > 4094) return undefined;
+      for (let v = a; v <= b; v++) out.push(v);
+    }
+    return out;
+  }
+  function portVlan(d, p) {
+    const c = (d.config.ports || {})[p];
+    if (c && c.mode === 'trunk') return { trunk: true, untagged: 1, allowed: parseVlans(c.allowed) || null };
+    return { trunk: false, untagged: (c && Number(c.vlan)) || 1 };
+  }
 
   // ---------- Building the topology ----------
 
   function build(net) {
-    const T = { net, devs: {}, ifaces: [], byDev: {}, linkOf: {}, group: {}, events: [] };
+    const T = { net, devs: {}, ifaces: [], byDev: {}, linked: {}, adj: {}, events: [] };
     const parent = {};
+    const node = k => { if (!(k in parent)) { parent[k] = k; T.adj[k] = []; } return k; };
     const find = k => { while (parent[k] !== k) { parent[k] = parent[parent[k]]; k = parent[k]; } return k; };
-    const union = (a, b) => { a = find(a); b = find(b); if (a !== b) parent[a] = b; };
+    const join = (a, b) => { T.adj[a].push(b); T.adj[b].push(a); const ra = find(a), rb = find(b); if (ra !== rb) parent[ra] = rb; };
 
+    // Every VLAN number in use, so "all" on a trunk means something concrete.
+    const used = new Set([1]);
     net.devices.forEach(d => {
       T.devs[d.id] = d;
       T.byDev[d.id] = [];
-      d.ports.forEach(p => { parent[pk(d.id, p)] = pk(d.id, p); });
+      if (kindOf(d) === 'switch') d.ports.forEach(p => { const v = portVlan(d, p); used.add(v.untagged); (v.allowed || []).forEach(x => used.add(x)); });
     });
+    // A layer-2 node is a port (computers, routers) or a port in one VLAN (switches).
+    const vkey = (d, p, v) => node(pk(d.id, p) + '@' + v);
+    const ends = (d, p) => {
+      if (kindOf(d) !== 'switch') return { untagged: node(pk(d.id, p)), tagged: {} };
+      const v = portVlan(d, p), tagged = {};
+      if (v.trunk) (v.allowed || [...used]).forEach(x => { if (x !== 1) tagged[x] = vkey(d, p, x); });
+      return { untagged: vkey(d, p, v.untagged), tagged };
+    };
+    const endOf = {};
+    net.devices.forEach(d => d.ports.forEach(p => { endOf[pk(d.id, p)] = ends(d, p); }));
+
+    // Cables: untagged frames meet untagged frames; a tagged VLAN crosses only if both ends carry it.
     net.links.forEach(l => {
-      const a = pk(l.a.dev, l.a.port), b = pk(l.b.dev, l.b.port);
-      if (!(a in parent) || !(b in parent)) return;
-      union(a, b);
-      T.linkOf[a] = l;
-      T.linkOf[b] = l;
+      const a = endOf[pk(l.a.dev, l.a.port)], b = endOf[pk(l.b.dev, l.b.port)];
+      if (!a || !b) return;
+      T.linked[pk(l.a.dev, l.a.port)] = T.linked[pk(l.b.dev, l.b.port)] = true;
+      join(a.untagged, b.untagged);
+      Object.keys(a.tagged).forEach(v => { if (b.tagged[v]) join(a.tagged[v], b.tagged[v]); });
     });
-    net.devices.forEach(d => l2Groups(d).forEach(g => {
-      const keys = g.map(p => pk(d.id, p));
-      keys.forEach(k => { T.group[k] = keys; union(keys[0], k); });
-    }));
+    // Inside a device: a switch joins ports in the same VLAN; a router or computer joins the ports of one interface.
+    net.devices.forEach(d => {
+      if (kindOf(d) === 'switch') {
+        const byVlan = {};
+        d.ports.forEach(p => { const e = endOf[pk(d.id, p)]; [e.untagged, ...Object.values(e.tagged)].forEach(k => { const v = k.split('@')[1]; (byVlan[v] = byVlan[v] || []).push(k); }); });
+        Object.values(byVlan).forEach(ks => ks.slice(1).forEach(k => join(ks[0], k)));
+      } else ifaceDefs(d).forEach(def => def.ports.slice(1).forEach(p => join(pk(d.id, def.ports[0]), pk(d.id, p))));
+    });
 
     net.devices.forEach(d => ifaceDefs(d).forEach(def => {
-      const up = def.ports.some(p => T.linkOf[pk(d.id, p)]);
+      const up = def.ports.some(p => T.linked[pk(d.id, p)]);
       const i = {
         key: d.id + '/' + def.name, dev: d.id, name: def.name, role: def.role, kind: kindOf(d), ports: def.ports,
         up, seg: up ? find(pk(d.id, def.ports[0])) : null,
@@ -219,15 +259,12 @@
   function l2path(T, a, b) {
     const goal = new Set(b.ports.map(p => pk(b.dev, p)));
     const prev = {}, q = [];
-    a.ports.map(p => pk(a.dev, p)).filter(k => T.linkOf[k]).forEach(k => { prev[k] = null; q.push(k); });
+    a.ports.map(p => pk(a.dev, p)).filter(k => T.linked[k]).forEach(k => { prev[k] = null; q.push(k); });
     let end = null;
     while (q.length) {
       const k = q.shift();
       if (goal.has(k)) { end = k; break; }
-      const nb = (T.group[k] || []).slice();
-      const l = T.linkOf[k];
-      if (l) { const o = pk(l.a.dev, l.a.port) === k ? l.b : l.a; nb.push(pk(o.dev, o.port)); }
-      nb.forEach(n => { if (!(n in prev)) { prev[n] = k; q.push(n); } });
+      (T.adj[k] || []).forEach(n => { if (!(n in prev)) { prev[n] = k; q.push(n); } });
     }
     if (!end) return [];
     const seq = [];
@@ -421,11 +458,13 @@
         // A home router relays the question to its own DNS server.
         const up = resolve(T, t.req.dev, name, 1);
         steps.push(...up.steps);
-        if (!up.ok) return { ok: false, steps, server: s, fail: up.fail.code === 'nxdomain' ? up.fail : { code: 'upstream', dev: t.req.dev, inner: up.fail, stage: up.fail.stage } };
+        // An internal DNS server that has no record and gets "no such name" from upstream: the record is what's missing.
+        const nx = !up.ok && up.fail.code === 'nxdomain' && t.svc.local ? { code: 'nxdomain', dev: fromId, name } : up.fail;
+        if (!up.ok) return { ok: false, steps, server: s, fail: up.fail.code === 'nxdomain' ? nx : { code: 'upstream', dev: t.req.dev, inner: up.fail, stage: up.fail.stage } };
         return { ok: true, ip: up.ip, steps, server: s };
       }
       const ip = DNS_DB[name];
-      if (ip == null) return { ok: false, steps, server: s, fail: { code: 'nxdomain', dev: fromId, name } };
+      if (ip == null) return { ok: false, steps, server: s, fail: { code: 'nxdomain', dev: fromId, name, publicDns: t.req.virtual ? s : null } };
       return { ok: true, ip: P(ip), steps, server: s };
     }
     return { ok: false, steps, server: servers[0], fail: { code: 'dnsfail', dev: fromId, server: servers[0], inner: first.fail, stage: first.stage } };
@@ -513,7 +552,9 @@
       }
       case 'nodns': msg = `${n} has no DNS server set, so it can't turn names into IP addresses.`; break;
       case 'nxdomain':
-        msg = /\.office$/.test(f.name)
+        msg = /\.office$/.test(f.name) && f.publicDns != null
+          ? `${s(f.publicDns)} is a public DNS server on the Internet. It only knows public names, not internal ones like "${f.name}".`
+          : /\.office$/.test(f.name)
           ? `No DNS server has a record for "${f.name}". Internal names only work once someone adds them to the internal DNS server.`
           : `The DNS server says the name "${f.name}" doesn't exist. (In this game, try www.example.com.)`;
         break;
@@ -554,6 +595,6 @@
 
   NG.Sim = {
     build, route, transact, resolve, browse, openShare, testPort, shareHost, externalVisit, l2path, explain, usable, dnsServersOf,
-    listening, svcByPort, parseRange, ruleText, checkAcl, SERVICES, VIRTUAL, ISP, REMOTE,
+    listening, svcByPort, parseRange, ruleText, checkAcl, parseVlans, portVlan, SERVICES, VIRTUAL, ISP, REMOTE,
   };
 })();

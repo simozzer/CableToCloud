@@ -13,7 +13,8 @@
     if (sel && sel.link) { const l = G().link(sel.link); if (l) { renderLink(l); return; } }
     const d = sel && sel.dev && G().dev(sel.dev);
     if (!d) { root.innerHTML = empty(); return; }
-    ({ host: renderHost, router: renderRouter, switch: renderSimple, internet: renderSimple })[Types[d.type].kind](d);
+    if (d.type === 'mswitch') renderMSwitch(d);
+    else ({ host: renderHost, router: renderRouter, switch: renderSimple, internet: renderSimple })[Types[d.type].kind](d);
     I.renderStatus();
   };
 
@@ -388,6 +389,7 @@
   }
 
   function switchStatus(d) {
+    if (d.type === 'mswitch') return '<p class="small">A managed switch: ports in the same VLAN form one local network. Ports in different VLANs are as separate as two switches. A <b>trunk</b> carries several VLANs over one cable, each frame tagged with its VLAN number.</p>';
     const rows = d.ports.map(p => {
       const l = Model.linkAt(G().net, d.id, p);
       if (!l) return [p, '<span class="muted">empty</span>'];
@@ -395,6 +397,51 @@
       return [p, `${esc(name(o.dev))} <small>${esc(o.port)}</small>`];
     });
     return '<p class="small">A switch joins devices into one local network. It needs no IP address.</p>' + kv(rows);
+  }
+
+  function renderMSwitch(d) {
+    const lock = d.lockedConfig, cfg = d.config.ports;
+    const row = p => {
+      const c = cfg[p] || {}, trunk = c.mode === 'trunk';
+      const l = Model.linkAt(G().net, d.id, p), o = l && Model.peer(l, d.id);
+      return `<tr data-port="${esc(p)}"><td><b>${esc(p)}</b></td>
+        <td>${o ? `${esc(name(o.dev))} <small class="muted">${esc(o.port)}</small>` : '<span class="muted">empty</span>'}</td>
+        <td><select data-f="mode" ${lock ? 'disabled' : ''}><option value="access">access</option><option value="trunk" ${trunk ? 'selected' : ''}>trunk</option></select></td>
+        <td><input data-f="vlan" value="${esc(trunk ? (c.allowed == null ? 'all' : c.allowed) : (c.vlan || 1))}" size="7" spellcheck="false" ${lock ? 'disabled' : ''}
+          title="${trunk ? 'VLANs this trunk carries, e.g. 10,20 (or all)' : 'VLAN number for this port (1–4094)'}"></td></tr>`;
+    };
+    root.innerHTML = head(d) + `
+      <h4>Ports</h4>
+      <table class="tbl vlan-tbl"><tr><th>Port</th><th>Connected to</th><th>Mode</th><th>VLAN(s)</th></tr>${d.ports.map(row).join('')}</table>
+      <p class="small muted"><b>access</b>: the port belongs to one VLAN. <b>trunk</b>: the port carries the listed VLANs (e.g. <code>10,20</code>), tagged, to another switch.</p>
+      ${lock ? '' : '<div class="btn-row"><button class="primary" id="f-save">Save switch settings</button></div><div class="errors" id="vlan-err"></div>'}
+      ${delBtn(d)}`;
+    bindCommon(d);
+    if (lock) return;
+    const save = $('#f-save', root);
+    $$('.vlan-tbl select', root).forEach(s => s.addEventListener('change', () => {
+      const inp = $('[data-f=vlan]', s.closest('tr'));
+      inp.value = s.value === 'trunk' ? 'all' : '1';
+      save.textContent = 'Save switch settings •';
+    }));
+    $$('.vlan-tbl input', root).forEach(i => i.addEventListener('input', () => { save.textContent = 'Save switch settings •'; }));
+    save.onclick = () => {
+      const next = {};
+      for (const tr of $$('.vlan-tbl tr[data-port]', root)) {
+        const p = tr.dataset.port, mode = $('[data-f=mode]', tr).value, v = $('[data-f=vlan]', tr).value.trim();
+        if (mode === 'trunk') {
+          if (NG.Sim.parseVlans(v) === undefined) { $('#vlan-err', root).textContent = `⚠ ${p}: list the VLANs as numbers, e.g. 10,20 (or all).`; return; }
+          next[p] = { mode, allowed: v.toLowerCase() === 'all' || !v ? null : v };
+        } else {
+          if (!/^\d+$/.test(v) || +v < 1 || +v > 4094) { $('#vlan-err', root).textContent = `⚠ ${p}: a VLAN number is from 1 to 4094.`; return; }
+          next[p] = { mode, vlan: Number(v) };
+        }
+      }
+      d.config.ports = next;
+      G().log(`${d.name}: switch port settings saved`);
+      G().recompute();
+      I.render();
+    };
   }
 
   function internetStatus() {

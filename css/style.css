@@ -211,7 +211,15 @@ button.danger { background: transparent; border-color: #7f1d1d; color: var(--bad
 .t-laptop { --c: #14b8a6; }
 .t-server { --c: #8b5cf6; }
 .t-printer { --c: #64748b; }
-.t-switch { --c: #22c55e; }
+.t-switch, .t-mswitch { --c: #22c55e; }
+.vlan-tbl select, .vlan-tbl input {
+  font: 12px var(--mono); color: var(--text); background: var(--bg);
+  border: 1px solid var(--border); border-radius: 5px; padding: 2px 4px; min-width: 0;
+}
+.vlan-tbl input { width: 64px; }
+.ic-badge { fill: #bbf7d0; font: 700 8px var(--mono); text-anchor: middle; letter-spacing: .5px; }
+.port-label.vlan rect { stroke: #a16207; }
+.port-label.trunk rect { stroke: #7c3aed; }
 .t-homerouter, .t-isprouter { --c: #f97316; }
 .t-officerouter { --c: #f59e0b; }
 .t-internet { --c: #38bdf8; }
