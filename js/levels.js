@@ -1067,7 +1067,7 @@
     hints: [
       'Click Sales-PC and run <code>open \\\\hr.office</code>. Then click the router and find <b>Access rules</b>.',
       'Rule 1: <b>permit</b>, source <code>10.1.20.0/24</code> (HR), destination <code>10.1.99.30</code>, TCP, port <code>445</code>. Rule 2: <b>deny</b>, source <code>any</code>, destination <code>10.1.99.30</code>, any protocol.',
-      'Did the Internet and the shared drive stop working? With two rules, everything else now hits the hidden “deny everything else”. Add rule 3: <b>permit</b> <code>any</code> → <code>any</code>, any protocol.',
+      'Did the Internet and the shared drive stop working? With two rules, everything else now hits the built-in “deny everything else”. Add rule 3: <b>permit</b> <code>any</code> → <code>any</code>, any protocol.',
       'For the experiment, press ▲ on the deny rule, then run <code>open \\\\hr.office</code> on HR-PC. Read the “Why?” line, then press ▼ to put it back.',
     ],
     learned: `

@@ -108,6 +108,9 @@ button.danger { background: transparent; border-color: #7f1d1d; color: var(--bad
 .box { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; margin: 8px 0; font-size: 13px; }
 .leases { margin-top: 6px; }
 .note { font-size: 12.5px; background: #1e293b; border-left: 3px solid var(--accent); padding: 6px 9px; border-radius: 5px; }
+.acl-warn { border-left-color: var(--warn); margin: 0 0 8px; }
+.acl-list li.acl-implicit { border: 1px dashed var(--border); border-radius: 6px; padding: 5px 6px; margin-top: 4px; opacity: .8; }
+.acl-implicit small { color: var(--muted); }
 .errors { color: var(--warn); font-size: 12.5px; margin-top: 6px; }
 .radios { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
 .radio { cursor: pointer; font-size: 13px; }

@@ -569,14 +569,21 @@
           ? `No DNS server has a record for "${f.name}". Internal names only work once someone adds them to the internal DNS server.`
           : `The DNS server says the name "${f.name}" doesn't exist. (In this game, try www.example.com.)`;
         break;
-      case 'dnsfail': msg = `${n} couldn't get an answer from its DNS server ${s(f.server)}. ` + explain(T, f.inner, f.stage); break;
+      case 'dnsfail':
+        msg = `${n} couldn't get an answer from its DNS server ${s(f.server)}. ` + explain(T, f.inner, f.stage);
+        // The classic access-rule surprise: every name needs a DNS lookup first, and the rules don't allow it.
+        if (f.inner && f.inner.code === 'acl') {
+          msg += ` Every name has to be looked up in DNS before anything else happens, so ${n} never even tried the real connection.`
+            + ` Permit DNS (UDP port 53 to ${s(f.server)}), or end the list with permit any → any.`;
+        }
+        break;
       case 'upstream': msg = `${n} relays DNS questions to its own DNS server, but that failed. ` + explain(T, f.inner, f.stage); break;
       case 'acl': {
         const a = f.acl, p = f.pkt;
         const what = `${p.proto.toUpperCase()}${p.proto === 'icmp' ? ' (ping)' : ' port ' + p.port} from ${s(p.src)} to ${s(dst)}`;
         msg = a.index >= 0
           ? `${n}'s access rules blocked ${what}. Rule ${a.index + 1} “${ruleText(a.rule)}” matched it.`
-          : `${n}'s access rules blocked ${what}. No rule matched, so the hidden “deny everything else” at the end of the list blocked it.`;
+          : `${n}'s access rules blocked ${what}. No rule matched, so the built-in “deny everything else” at the end of the list blocked it.`;
         if (a.shadowed) {
           msg += ` Rule ${a.shadowed.index + 1} “${ruleText(a.shadowed.rule)}” would have allowed it, but rule ${a.index + 1} comes first, and the first match wins.`;
         } else {

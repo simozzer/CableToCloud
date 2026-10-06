@@ -309,6 +309,7 @@
 
   function aclHtml(d) {
     const rules = d.config.acl;
+    const catchAll = r => r.action === 'permit' && r.proto === 'any' && NG.Sim.parseRange(r.src).any && NG.Sim.parseRange(r.dst).any;
     const what = r => r.proto === 'any' ? 'any protocol' : r.proto === 'icmp' ? 'ICMP (ping)'
       : `${r.proto.toUpperCase()} ${r.port ? 'port ' + esc(r.port) : 'any port'}`;
     return `<div class="router-if acl"><h4>Access rules <small class="muted">(firewall)</small></h4>
@@ -319,7 +320,10 @@
           <span class="acl-rule"><span class="acl-${r.action}">${r.action}</span> <code>${esc(r.src)}</code> → <code>${esc(r.dst)}</code>
             <small class="muted">${what(r)}</small></span>
           <span class="acl-btns"><button class="small-btn" data-acl-up="${k}" ${k ? '' : 'disabled'} title="Move up">▲</button><button class="small-btn" data-acl-down="${k}" ${k < rules.length - 1 ? '' : 'disabled'} title="Move down">▼</button><button class="danger small-btn" data-acl-del="${k}" title="Remove">✕</button></span></li>`).join('')}
-        <li class="muted"><span class="acl-n"></span><span class="acl-rule"><i>deny everything else</i></span></li></ol>`
+        <li class="acl-implicit"><span class="acl-n">∗</span><span class="acl-rule"><span class="acl-deny">deny</span> everything else
+          <small>Built in, not one of your rules. It is always there once the list has any rules, and can’t be removed.</small></span></li></ol>
+        ${catchAll(rules[rules.length - 1]) ? '' : `<div class="note acl-warn">⚠ Anything not permitted above is blocked, <b>including DNS lookups and the Internet</b>.
+          If everything else should keep working, end the list with <b>permit</b> <code>any</code> → <code>any</code>.</div>`}`
         : '<p class="small muted">No rules: the router forwards everything.</p>'}
       <div class="acl-add">
         <select id="acl-action" title="Action"><option value="permit">permit</option><option value="deny">deny</option></select>
