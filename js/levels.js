@@ -1045,6 +1045,10 @@
         <div class="concept"><h5>Closed vs filtered</h5>
           <p>A <b>closed</b> port answers “nothing here”. A <b>filtered</b> port gives no answer at all, because something on the way dropped the packet.
           <code>test</code> shows the difference.</p></div>
+        <div class="concept"><h5>Two ways to write it</h5>
+          <p><b>Block what’s bad:</b> deny the danger, then <code>permit any → any</code>. <b>Allow only what’s needed</b> (an allowlist): permit each
+          thing people use, and let the built-in deny block the rest. Both are correct. Allowlists are safer, but you must remember everything,
+          including DNS.</p></div>
       </div>
       <p class="muted small">Click the router: <b>Access rules</b> is at the top of its settings. Leave the port empty to mean any port.</p>`,
     objectives: [
@@ -1060,21 +1064,19 @@
         check: c => staff(c).every(d => canBrowse(c, d)) },
       { text: 'From Sales-PC, <code>test hr.office 445</code> now says <b>FILTERED</b>',
         check: c => H.ev(c, e => e.type === 'test' && e.dev === tagged(c, 'sales').id && e.ip === HRFS_IP && e.port === 445 && e.code === 'acl') },
-      { text: 'Experiment: move your deny rule <b>above</b> the HR permit, try <code>open \\\\hr.office</code> on HR-PC and watch it get blocked too. Then put it back',
-        check: c => H.ev(c, e => ['open', 'test', 'ping'].includes(e.type) && e.dev === tagged(c, 'hr').id && e.code === 'acl'
-          && (e.host === 'hr.office' || e.ip === HRFS_IP || e.dst === HRFS_IP)) },
     ],
     hints: [
       'Click Sales-PC and run <code>open \\\\hr.office</code>. Then click the router and find <b>Access rules</b>.',
-      'Rule 1: <b>permit</b>, source <code>10.1.20.0/24</code> (HR), destination <code>10.1.99.30</code>, TCP, port <code>445</code>. Rule 2: <b>deny</b>, source <code>any</code>, destination <code>10.1.99.30</code>, any protocol.',
-      'Did the Internet and the shared drive stop working? With two rules, everything else now hits the built-in “deny everything else”. Add rule 3: <b>permit</b> <code>any</code> → <code>any</code>, any protocol.',
-      'For the experiment, press ▲ on the deny rule, then run <code>open \\\\hr.office</code> on HR-PC. Read the “Why?” line, then press ▼ to put it back.',
+      'The simplest list: rule 1 <b>permit</b> <code>10.1.20.0/24</code> (HR) → <code>10.1.99.30</code>, TCP, port <code>445</code>. Rule 2 <b>deny</b> <code>any</code> → <code>10.1.99.30</code>, any protocol.',
+      'Did names, the Internet and the shared drive stop working? Everything not permitted hits the built-in “deny everything else”, including DNS. Add rule 3: <b>permit</b> <code>any</code> → <code>any</code>, any protocol.',
+      'Prefer an allowlist? That works too: keep the HR permit and add permits for DNS (UDP 53), the shared drive and intranet (TCP 445 and 80 to <code>10.1.99.20</code>) and the web (TCP 80). The status lights will turn amber, because they use <code>ping</code>, which your list doesn’t allow.',
     ],
     learned: `
       <ul>
         <li><b>Access rules</b> (a firewall) decide which connections may pass, by source, destination, protocol and port.</li>
         <li>The <b>first matching rule</b> wins, so put specific rules (permit HR) above broad ones (deny everyone).</li>
-        <li>A list with any rules ends in an invisible <b>deny everything else</b>. Add <code>permit any → any</code> if everything else should still work.</li>
+        <li>A list with any rules ends in a built-in <b>deny everything else</b>. Add <code>permit any → any</code> if everything else should still work.</li>
+        <li>You can <b>block what’s bad</b> (deny, then permit the rest) or <b>allow only what’s needed</b> (an allowlist). Allowlists are safer but must include everything, even DNS.</li>
         <li>The router lets <b>replies</b> to allowed connections back in automatically. This is called a <b>stateful</b> firewall.</li>
         <li>A <b>filtered</b> port gives no answer at all. A <b>closed</b> one answers “nothing listening here”.</li>
         <li>Separate networks plus rules between them is how real offices protect sensitive servers, and how cloud <b>security groups</b> work too.</li>
