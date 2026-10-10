@@ -47,6 +47,11 @@ button.danger { background: transparent; border-color: #7f1d1d; color: var(--bad
 .brand .logo { color: var(--accent); }
 .brand small { color: var(--accent); font-size: 11px; border: 1px solid var(--accent); border-radius: 4px; padding: 0 4px; margin-left: 4px; vertical-align: 2px; }
 #level-title { flex: 1; font-weight: 600; }
+#timer { font: 13px var(--mono); color: var(--muted); white-space: nowrap; margin-right: 6px; }
+#timer b { color: var(--text); font-weight: 600; }
+#timer.stopped b { color: var(--good); }
+.run-time { font-size: 15px; margin: 6px 0 0; }
+.lvl-card .state { text-align: right; }
 #level-title small { color: var(--muted); font-weight: 400; margin-left: 8px; }
 .top-actions { display: flex; gap: 8px; }
 .top-link {

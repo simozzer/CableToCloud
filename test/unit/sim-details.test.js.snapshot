@@ -77,6 +77,36 @@ unknown device
 
 `;
 
+exports[`how DNS answers are explained, and what each kind of DNS server is called 1`] = `
+
+home PC, router relay
+  PC1 asked its DNS server, Router (192.168.1.1), a router that passes DNS questions on.
+  Router keeps no records itself, so it asked its own DNS server, 8.8.8.8 (dns.google), a public DNS server on the Internet.
+  8.8.8.8 answered: www.example.com is 93.184.216.34.
+home PC, a plain address needs no DNS
+  (nothing to explain: no DNS question answered)
+home PC, a name that doesn’t exist
+  (nothing to explain: no DNS question answered)
+office PC, internal record
+  PC asked its DNS server, Server (10.0.2.53), an internal DNS server.
+  Server answered from its own records: files.office is 10.0.2.53.
+office PC, public name through the internal server
+  PC asked its DNS server, Server (10.0.2.53), an internal DNS server.
+  Server had no record for www.example.com, so it asked its own DNS server, 8.8.8.8 (dns.google), a public DNS server on the Internet.
+  8.8.8.8 answered: www.example.com is 93.184.216.34.
+office PC set to a public DNS server
+  PC asked its DNS server, 1.1.1.1 (one.one.one.one), a public DNS server on the Internet.
+  1.1.1.1 answered: www.example.com is 93.184.216.34.
+kinds of server
+  public: [public] 8.8.8.8 (dns.google), a public DNS server on the Internet | a public DNS server on the Internet
+  router relay: [relay] Router (192.168.1.1), a router that passes DNS questions on | Router, a router that passes DNS questions on
+  internal: [internal] Server (10.0.2.53), an internal DNS server | Server, an internal DNS server
+  a router that doesn’t relay: [not-dns] Router (10.0.1.1), which isn't a DNS server | Router, which isn't a DNS server
+  a PC: [not-dns] PC (10.0.1.100), which isn't a DNS server | PC, which isn't a DNS server
+  nobody there: [none] 10.0.9.9 | nothing answers at this address
+
+`;
+
 exports[`the route packets take: a catalogue of journeys 1`] = `
 
 PC to the Internet (NAT)

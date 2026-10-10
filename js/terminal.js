@@ -162,6 +162,8 @@
         p(`   Default Gateway . . . . . . . . . : ${i.gw != null ? IP.str(i.gw) : ''}`);
         if (all && i.source === 'dhcp') p(`   DHCP Server . . . . . . . . . . . : ${IP.str(i.srv.ip)}`);
         p(`   DNS Servers . . . . . . . . . . . : ${i.dns.map(IP.str).join(', ')}`);
+        // Not part of the real ipconfig: say what kind of DNS server each one is, since that decides which names it knows.
+        i.dns.forEach(ip => p(`                                       (${IP.str(ip)}: ${Sim.dnsKind(T, ip).short})`, 'muted'));
         if (i.source === 'apipa') why(p, 'A 169.254.x.x address means the computer asked for an address by DHCP, but no DHCP server answered.');
         if (i.conflict) why(p, `${G().dev(i.conflict.dev).name} is already using ${IP.str(i.ip)}.`);
       }
@@ -251,7 +253,9 @@
       p('');
       p(`Name:     ${name}`);
       p(`Address:  ${IP.str(r.ip)}`, 'ok');
-      if (r.steps.length > 1) why(p, `${G().dev(r.steps[0].req.dev) ? G().dev(r.steps[0].req.dev).name : 'The router'} didn't know the answer itself, so it relayed the question to its own DNS server.`);
+      const story = Sim.dnsStory(T, name, r);
+      if (story.length) p('How it was answered:', 'why');
+      story.forEach(line => p('  ' + line, 'why'));
     } else if (r.fail.code === 'nxdomain') {
       p(`*** ${IP.str(r.server)} can't find ${name}: Non-existent domain`, 'err');
       why(p, Sim.explain(T, r.fail));

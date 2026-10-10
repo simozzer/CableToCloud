@@ -108,6 +108,34 @@ test('review notes, word for word', () => {
   assert.deepEqual(t7.review(), [], 'a DHCP device’s leftover static address is ignored');
 });
 
+test('rule ranges wider than the networks they cover get a review note', () => {
+  const g = play('guests');
+  solutions.guests(g);
+  assert.deepEqual(g.review(), [], 'the model answer, 10.1.0.0/16, is tight');
+  g.router().config.acl[0] = rule('deny', '10.1.50.0/24', '10.0.0.0/8');
+  g.rebuild();
+  assert.deepEqual(g.review(), ['Rule 1’s destination <code>10.0.0.0/8</code> is wider than it needs to be: the networks it covers here all fit in '
+    + '<code>10.1.0.0/16</code>. A tighter range says exactly what you mean, and won’t catch other networks by accident later.']);
+  g.router().config.acl[0] = rule('deny', '10.1.0.0/16', '10.1.10.0/23');
+  g.rebuild();
+  assert.equal(g.review().length, 1, 'the source 10.1.0.0/16 covers all three office networks, so it is tight; only the destination is flagged');
+  assert.match(g.review()[0], /^Rule 1’s destination <code>10\.1\.10\.0\/23<\/code>.*fit in <code>10\.1\.10\.0\/24<\/code>/);
+  g.router().config.acl[0] = rule('deny', '10.0.0.0/8', '10.1.99.0/24');
+  g.rebuild();
+  assert.match(g.review()[0], /^Rule 1’s source <code>10\.0\.0\.0\/8<\/code> is wider than it needs to be: .*fit in <code>10\.1\.0\.0\/16<\/code>/);
+  g.router().config.acl[0] = rule('deny', '10.1.50.0/24', '203.0.0.0/8');
+  g.rebuild();
+  assert.deepEqual(g.review(), [], 'the router’s public WAN network isn’t one of “its” networks');
+  const d = play('dmz');
+  solutions.dmz(d);
+  d.router().config.acl[0] = rule('deny', '10.1.200.0/24', '10.0.0.0/8');
+  d.rebuild();
+  assert.match(d.review().join(' '), /fit in <code>10\.1\.0\.0\/16<\/code>/);
+  d.router().config.acl[0] = rule('deny', '10.1.200.0/24', '192.168.0.0/16');
+  d.rebuild();
+  assert.deepEqual(d.review(), [], 'a range covering none of this router’s networks is left alone');
+});
+
 test('the Subnet helper tutorial counts blocks in any order', () => {
   const g = play('subnet-basics');
   g.act.subnetHelper([['192.168.1.128', 25], ['192.168.1.0', 25]]);

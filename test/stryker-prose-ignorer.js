@@ -17,7 +17,7 @@ module.exports.strykerPlugins = [
       if (prop) return `“${keyName(prop)}” is text for the player, not behaviour`;
       // Constants that only hold HTML for briefings (e.g. the subnet cheat sheet, the office plan table).
       const decl = path.findParent(p => p.isVariableDeclarator());
-      if (decl && /^(SIZES_TABLE|RULES_CONCEPTS|HR_ROW|officePlan|helperBtn)$/.test(decl.node.id && decl.node.id.name)) return 'briefing text';
+      if (decl && /^(SIZES_TABLE|RULES_CONCEPTS|HR_ROW|WHICH_DNS|officePlan|helperBtn)$/.test(decl.node.id && decl.node.id.name)) return 'briefing text';
       return undefined;
     },
   }),

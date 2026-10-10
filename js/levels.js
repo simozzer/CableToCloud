@@ -933,6 +933,19 @@
     }
   }
 
+  // Which DNS server a device asks decides which names it can look up (levels 12 and 16).
+  const WHICH_DNS = `
+      <div class="box"><b>Which DNS server answers?</b>
+        <p class="small">The router doesn’t choose. Each device has its own <b>DNS server</b> setting, typed in or handed out by DHCP,
+        and asks that server. The question is an ordinary packet (UDP port 53), routed like any other. What differs is who answers:</p>
+        <table class="tbl">
+          <tr><th>The device was given</th><th>Who answers</th><th>Knows internal names?</th></tr>
+          <tr><td>a public server, e.g. <code>8.8.8.8</code></td><td>Google, across the Internet</td><td>No, only public names</td></tr>
+          <tr><td>a home router, e.g. <code>192.168.1.1</code></td><td>the router passes the question to <i>its</i> DNS server</td><td>No</td></tr>
+          <tr><td>an internal server, e.g. DNS1</td><td>the company’s own server, from its records; other names it asks <code>8.8.8.8</code></td><td>Yes</td></tr>
+        </table>
+        <p class="small muted">Try <code>nslookup</code> and <code>ipconfig</code>: they show which server was asked and how the answer came back.</p></div>`;
+
   const officePlan = (extra = '') => `
       <div class="box"><b>Network plan</b>
         <table class="kv">
@@ -973,7 +986,8 @@
         <div class="concept"><h5>File sharing</h5>
           <p>A file server shares folders over the <b>SMB</b> protocol, which listens on <b>TCP port 445</b>. Open a share with
           <code>open \\\\files.office</code>: the two backslashes mean “a shared folder on this server”.</p></div>
-      </div>`,
+      </div>
+      ${WHICH_DNS}`,
     objectives: [
       { text: 'Configure the router’s <b>Gi0/3</b> (Servers) as <code>10.1.99.1</code> / <code>255.255.255.0</code>',
         check: c => ifOk(c, 'Gi0/3', '10.1.99.1') },
@@ -1038,8 +1052,12 @@
           <p>An IP address gets a packet to the right <b>device</b>. The <b>port number</b> gets it to the right <b>service</b> on that device.
           One server can run many services, each listening behind its own port.</p></div>
         <div class="concept"><h5>Well-known ports</h5>
-          <p>Clients know which door to knock on: web is <b>80</b> (HTTP) or <b>443</b> (HTTPS), file sharing is <b>445</b> (SMB),
-          DNS is <b>53</b>, remote login is <b>22</b> (SSH).</p></div>
+          <p>Clients know which door to knock on: web is TCP <b>80</b> (HTTP) or <b>443</b> (HTTPS), file sharing is TCP <b>445</b> (SMB),
+          remote login is TCP <b>22</b> (SSH), and DNS is <b>UDP</b> <b>53</b>.</p></div>
+        <div class="concept"><h5>TCP, UDP and ICMP</h5>
+          <p><b>TCP</b> sets up a connection first, then makes sure everything arrives, in order: right for web pages, files and logins.
+          <b>UDP</b> just sends a packet: right for one small question and answer, like DNS. TCP 53 and UDP 53 are different doors.
+          <b>Ping</b> uses <b>ICMP</b>, which has no ports at all.</p></div>
         <div class="concept"><h5>Open or closed</h5>
           <p>If the device answers but no service is listening, the port is <b>closed</b>: the network is fine and the problem is the service.
           If nothing answers at all, it’s a network problem.</p></div>
@@ -1084,7 +1102,8 @@
     learned: `
       <ul>
         <li>The <b>IP address</b> finds the device. The <b>port</b> finds the service on that device.</li>
-        <li>Well-known ports: <b>22</b> SSH, <b>53</b> DNS, <b>80</b> HTTP, <b>443</b> HTTPS, <b>445</b> SMB file sharing.</li>
+        <li>Well-known ports: TCP <b>22</b> SSH, UDP <b>53</b> DNS, TCP <b>80</b> HTTP, TCP <b>443</b> HTTPS, TCP <b>445</b> SMB file sharing.</li>
+        <li><b>TCP</b> sets up a connection and guarantees delivery; <b>UDP</b> just sends (DNS uses it for quick questions); <b>ping</b> is ICMP, with no ports.</li>
         <li>A <b>closed</b> port means the device is reachable but the service isn’t running. No answer at all means a network problem.</li>
         <li><code>netstat</code> shows what a server is listening on. <code>test host port</code> checks it from the client’s side.</li>
         <li>DNS maps names to <b>addresses</b>, not ports, so many names can share one server.</li>
@@ -1274,6 +1293,30 @@
     const rules = r.config.acl, out = [];
     NG.Sim.aclLint(rules).forEach(x => out.push(`Rule ${x.index + 1} (<code>${NG.Sim.ruleText(rules[x.index])}</code>) can never match: rule ${x.by + 1} above it already catches everything it would. You can delete it.`));
     if (best && rules.length > best) out.push(`Your list has ${rules.length} rules. It can be done with ${best}: compare with the model solution.`);
+    return out.concat(tooWide(c, r, rules));
+  }
+
+  // Rule ranges much wider than the networks they actually cover, e.g. 10.0.0.0/8 when every network here is in 10.1.0.0/16.
+  // Too wide a deny is safe today, but says more than you mean and can catch networks added later (too wide a permit is a
+  // security hole, which the objectives themselves catch).
+  function tooWide(c, router, rules) {
+    const nets = c.T.byDev[router.id].filter(i => i.role === 'lan' && i.ip != null).map(i => ({ net: IP.net(i.ip, i.mask), p: IP.prefix(i.mask) }));
+    const out = [];
+    rules.forEach((rule, k) => ['src', 'dst'].forEach(side => {
+      const R = NG.Sim.parseRange(rule[side]);
+      if (!R || R.any) return;
+      const p = IP.prefix(R.mask);
+      const inside = nets.filter(n => n.p >= p && IP.same(n.net, R.net, R.mask));
+      if (!inside.length) return;
+      // The longest prefix every covered network shares, rounded down to a whole number of octets (/8, /16, /24).
+      let common = Math.min(...inside.map(n => n.p));
+      while (inside.some(n => !IP.same(n.net, inside[0].net, IP.maskFromPrefix(common)))) common--;
+      const tight = Math.floor(common / 8) * 8;
+      if (tight <= p) return;
+      const better = `${IP.str(IP.net(inside[0].net, IP.maskFromPrefix(tight)))}/${tight}`;
+      out.push(`Rule ${k + 1}’s ${side === 'src' ? 'source' : 'destination'} <code>${rule[side]}</code> is wider than it needs to be: `
+        + `the networks it covers here all fit in <code>${better}</code>. A tighter range says exactly what you mean, and won’t catch other networks by accident later.`);
+    }));
     return out;
   }
 
@@ -1340,12 +1383,23 @@
           <p>Guest devices are unknown and untrusted. The safe design is that guests can reach the Internet, but can’t <b>start</b> a connection to
           anything inside, not even to see what is there.</p></div>
         <div class="concept"><h5>One rule, many networks</h5>
-          <p>Every inside network here is part of <code>10.0.0.0/8</code>. One rule with that destination covers Staff, Servers and any
-          10.x network you add later. That is subnetting working for you.</p></div>
+          <p>Every inside network here starts <code>10.1</code>, so they all fit in <code>10.1.0.0/16</code>. One rule with that destination
+          covers Staff, Servers and any office network added later. That is subnetting working for you.</p></div>
         <div class="concept"><h5>Don’t forget DNS</h5>
           <p>Guests need a DNS server too. If theirs is inside the company, blocking the inside blocks their DNS. Hand guests a <b>public</b>
           DNS server instead, so they never learn internal names.</p></div>
-      </div>`,
+      </div>
+      <div class="box"><b>How wide should the range be?</b>
+        <p class="small">The same rule, “deny guests → <i>range</i>”, with three different widths:</p>
+        <table class="tbl">
+          <tr><th>Range</th><th>Covers</th><th>Result</th></tr>
+          <tr><td><code>10.1.10.0/24</code></td><td>Staff only (<code>10.1.10.x</code>)</td><td class="bad">Too narrow: guests can still reach the servers</td></tr>
+          <tr><td><code>10.1.0.0/16</code></td><td>every <code>10.1.x.x</code> network: Staff, Guests, Servers</td><td class="good">Just right: all the office’s networks, nothing else</td></tr>
+          <tr><td><code>10.0.0.0/8</code></td><td>every <code>10.x.x.x</code> address there is</td><td class="warn">Works, but too wide: it also covers networks that aren’t yours</td></tr>
+        </table>
+        <p class="small muted">Aim for the tightest range that covers what you mean. Too wide matters most on a <b>permit</b>, where it
+        lets in people it shouldn’t, as in <i>Locked Out</i>.</p></div>
+      ${WHICH_DNS}`,
     objectives: [
       { text: 'From Guest-Laptop, try <code>open \\\\files.office</code>. Before any rules, it works, and it shouldn’t!',
         check: c => H.ev(c, e => e.type === 'open' && e.dev === tagged(c, 'guest').id) },
@@ -1362,18 +1416,18 @@
     ],
     hints: [
       'On Guest-Laptop, run <code>open \\\\files.office</code> and <code>ping</code> Staff-PC’s address. Both work: nothing stops guests yet.',
-      'On the router, add <b>deny</b> <code>10.1.50.0/24</code> → <code>10.0.0.0/8</code>, any protocol. Then <b>permit</b> <code>any</code> → <code>any</code> so everything else keeps working.',
+      'On the router, add <b>deny</b> <code>10.1.50.0/24</code> → <code>10.1.0.0/16</code>, any protocol: every office network starts <code>10.1</code>. Then <b>permit</b> <code>any</code> → <code>any</code> so everything else keeps working.',
       'Now guests can’t browse at all. <code>browse www.example.com</code> on Guest-Laptop: the Why? line shows their DNS server, 10.1.99.53, is inside and blocked.',
       'In the router’s <b>Gi0/2</b> settings, change the DHCP <b>DNS server</b> to <code>8.8.8.8</code> and save. Guests get a public DNS server, which also knows nothing about <code>files.office</code>.',
     ],
     solution: `<ol>
-      <li>Router access rules: <b>deny</b> <code>10.1.50.0/24</code> → <code>10.0.0.0/8</code> any protocol, then <b>permit</b> <code>any</code> → <code>any</code>.</li>
+      <li>Router access rules: <b>deny</b> <code>10.1.50.0/24</code> → <code>10.1.0.0/16</code> any protocol, then <b>permit</b> <code>any</code> → <code>any</code>.</li>
       <li>Router <b>Gi0/2</b>: change the DHCP DNS server to <code>8.8.8.8</code> and save.</li></ol>`,
     review: c => aclReview(c, 2),
     learned: `
       <ul>
         <li>A guest network should reach the <b>Internet only</b>: deny guests → every inside network, then permit the rest.</li>
-        <li>One rule with a big prefix (<code>10.0.0.0/8</code>) covers many networks at once, including future ones.</li>
+        <li>One rule with a shorter prefix (<code>10.1.0.0/16</code>) covers many networks at once, including future ones. Use the tightest range that covers them.</li>
         <li>Guests need DNS too. Give them a <b>public</b> DNS server rather than opening a hole to an internal one.</li>
         <li>Rules only stop guests <i>starting</i> connections. Staff browsing the web still works because replies always get back.</li>
       </ul>`,

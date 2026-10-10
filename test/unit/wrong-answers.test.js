@@ -71,6 +71,7 @@ const CASES = [
   ['guests', 'guest DNS kept internal, with a hole for it', g => {
     dhcp(g, 'Gi0/2', { dns: '10.1.99.53' });
     g.router().config.acl.unshift(rule('permit', '10.1.50.0/24', '10.1.99.53', 'udp', '53')); g.rebuild(); }, 5],
+  ['guests', 'range too narrow: only the Staff network blocked', g => { g.router().config.acl[0] = rule('deny', '10.1.50.0/24', '10.1.10.0/24'); g.rebuild(); }, 2],
   ['guests', 'only the file server blocked', g => { g.router().config.acl[0] = rule('deny', '10.1.50.0/24', '10.1.99.20'); g.rebuild(); }, 3],
 
   ['dmz', 'WebServer moved, but its gateway still the old one', g => host(g, 'web', { gw: '10.1.99.1' }), 3],

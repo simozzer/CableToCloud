@@ -105,6 +105,77 @@ test('the access rules form adds, explains and refuses rules', async ({ page }) 
   expect(rules).toEqual(['deny', 'permit', 'permit']);
 });
 
+test('a level timer: starts with the briefing, stops on completion, keeps personal bests', async ({ page }) => {
+  await page.clock.install();
+  await openLevel(page, 14);
+  // openLevel closes the briefing without pressing Start, so the clock hasn't started.
+  await expect(page.locator('#timer')).toHaveText('⏱ 0:00');
+  const solve = () => page.evaluate(() => {
+    const r = NG.Game.net.devices.find(d => d.type === 'officerouter');
+    const rule = (action, src, dst, proto = 'any', port = '') => ({ action, src, dst, proto, port });
+    r.config.acl = [rule('permit', '10.1.20.0/24', '10.1.99.30', 'tcp', '445'), rule('permit', 'any', '10.1.99.20', 'tcp', '80'),
+      rule('permit', 'any', '10.1.99.20', 'tcp', '445'), rule('permit', 'any', '10.1.99.53', 'udp', '53'),
+      rule('deny', '10.1.10.0/24', '10.1.20.0/24'), rule('deny', 'any', '10.1.99.0/24'), rule('permit', 'any', 'any')];
+    NG.Game.recompute();
+  });
+  const play = async (seconds) => {
+    await page.evaluate(() => NG.Game.loadLevel(14));
+    await page.getByRole('button', { name: 'Start ▶' }).click();
+    await page.clock.runFor(seconds * 1000);
+    await expect(page.locator('#timer b')).toHaveText(`${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`);
+    await solve();
+    await page.clock.runFor(2000);
+    await expect(page.locator('#modal .win h2')).toHaveText('Level complete!');
+  };
+  await play(95);
+  await expect(page.locator('#modal .run-time')).toContainText('Your time 1:35 · your first best time');
+  await page.getByRole('button', { name: 'Keep exploring' }).click();
+  await expect(page.locator('#timer')).toContainText('1:35 · best 1:35');
+  await play(70);
+  await expect(page.locator('#modal .run-time')).toContainText('Your time 1:10 · New personal best! (was 1:35)');
+  await page.getByRole('button', { name: 'Keep exploring' }).click();
+  await play(80);
+  await expect(page.locator('#modal .run-time')).toContainText('Your time 1:20 · best 1:10');
+  await page.getByRole('button', { name: 'Keep exploring' }).click();
+  // Looking at the model solution first: the time shows but can't be a best.
+  await page.evaluate(() => NG.Game.loadLevel(14));
+  await page.getByRole('button', { name: 'Start ▶' }).click();
+  await page.evaluate(() => NG.Game.showSolution());
+  await page.getByRole('button', { name: 'Close' }).click();
+  await page.clock.runFor(30000);
+  await solve();
+  await page.clock.runFor(2000);
+  await expect(page.locator('#modal .run-time')).toContainText('doesn’t count as a best');
+  await page.getByRole('button', { name: 'Keep exploring' }).click();
+  await page.locator('#btn-levels').click();
+  await expect(page.locator('.lvl-card').nth(14)).toContainText('best 1:10');
+});
+
+test('the rules form warns once about a well-known port with the wrong protocol', async ({ page }) => {
+  await openLevel(page, 13);
+  await select(page, 'Router1');
+  await page.selectOption('#acl-proto', 'tcp');
+  await page.fill('#acl-src', 'any');
+  await page.fill('#acl-dst', '10.1.99.53');
+  await page.fill('#acl-port', '53');
+  await page.click('#acl-add');
+  await expect(page.locator('#acl-err')).toContainText('Port 53 is DNS, which uses UDP, not TCP');
+  await expect(page.locator('.acl-list li:not(.acl-implicit)')).toHaveCount(0);
+  await page.click('#acl-add');
+  await expect(page.locator('.acl-list li:not(.acl-implicit)')).toHaveCount(1, { timeout: 5000 });
+});
+
+test('nslookup explains who answered, and ipconfig says what kind of DNS server it uses', async ({ page }) => {
+  await openLevel(page, 12);
+  await select(page, 'sales');
+  await run(page, 'ipconfig');
+  await expect(page.locator('#term-out')).toContainText('(10.1.99.53: DNS1, an internal DNS server)');
+  await run(page, 'nslookup www.example.com');
+  await expect(page.locator('#term-out')).toContainText('DNS1 had no record for www.example.com, so it asked its own DNS server, 8.8.8.8');
+  await run(page, 'nslookup intranet.office');
+  await expect(page.locator('#term-out')).toContainText('DNS1 answered from its own records: intranet.office is 10.1.99.20.');
+});
+
 test('the Subnet helper list splits and merges any block', async ({ page }) => {
   await openLevel(page, 8);
   await page.locator('#btn-subnet').click();

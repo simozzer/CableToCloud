@@ -362,6 +362,41 @@ test('a customer visit uses the router connected to the Internet, not another de
   assert.equal(Sim.externalVisit(Sim.build(Model.create())).noWan, true, 'no Internet cloud at all');
 });
 
+// ---------- How names get answered (catalogue) ----------
+
+test('how DNS answers are explained, and what each kind of DNS server is called', t => {
+  const lines = [];
+  const story = (label, T, from, name) => {
+    const r = Sim.resolve(T, from.id, name);
+    lines.push(`${label}\n${Sim.dnsStory(T, name, r).map(s => '  ' + s).join('\n') || '  (nothing to explain: no DNS question answered)'}`);
+  };
+  const h = home(1), T1 = h.T();
+  story('home PC, router relay', T1, h.pcs[0], 'www.example.com');
+  story('home PC, a plain address needs no DNS', T1, h.pcs[0], '8.8.8.8');
+  story('home PC, a name that doesn’t exist', T1, h.pcs[0], 'nothing.example');
+  const o = office(), T2 = o.T();
+  story('office PC, internal record', T2, o.pc, 'files.office');
+  story('office PC, public name through the internal server', T2, o.pc, 'www.example.com');
+  statik(o.pc, '10.0.1.9', '10.0.1.1', '1.1.1.1');
+  const T3 = o.T();
+  story('office PC set to a public DNS server', T3, o.pc, 'www.example.com');
+  lines.push('kinds of server');
+  for (const [label, T, ip] of [['public', T1, '8.8.8.8'], ['router relay', T1, '192.168.1.1'], ['internal', T2, '10.0.2.53'],
+    ['a router that doesn’t relay', T2, '10.0.1.1'], ['a PC', T2, '10.0.1.100'], ['nobody there', T2, '10.0.9.9']]) {
+    const k = Sim.dnsKind(T, P(ip));
+    lines.push(`  ${label}: [${k.kind}] ${k.text} | ${k.short}`);
+  }
+  t.assert.snapshot(`\n${lines.join('\n')}\n`, { serializers: [v => v] });
+});
+
+test('well-known ports know their protocol', () => {
+  assert.deepEqual(Sim.wellKnown(53), { proto: 'udp', name: 'DNS' });
+  assert.deepEqual(Sim.wellKnown('445'), { proto: 'tcp', name: 'file sharing (SMB)' });
+  assert.equal(Sim.wellKnown(8080), null);
+  assert.deepEqual(['22', '67', '68', '80', '443'].map(p => `${Sim.wellKnown(p).proto} ${Sim.wellKnown(p).name}`),
+    ['tcp SSH', 'udp DHCP', 'udp DHCP', 'tcp web (HTTP)', 'tcp secure web (HTTPS)']);
+});
+
 // ---------- The "Why?" catalogue ----------
 
 test('every "Why?" explanation, word for word', t => {

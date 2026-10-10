@@ -168,7 +168,7 @@ module.exports = {
 
   guests(g) {
     g.act.open('guest', share + 'files.office');
-    setRules(g, [rule('deny', '10.1.50.0/24', '10.0.0.0/8'), rule('permit', 'any', 'any')]);
+    setRules(g, [rule('deny', '10.1.50.0/24', '10.1.0.0/16'), rule('permit', 'any', 'any')]);
     setIfaces(g, { 'Gi0/2': { dhcp: Object.assign(g.router().config.ifaces['Gi0/2'].dhcp, { dns: '8.8.8.8' }) } });
   },
 

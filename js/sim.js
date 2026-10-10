@@ -531,6 +531,41 @@
     return { ok: false, steps, server: servers[0], fail: { code: 'dnsfail', dev: fromId, server: servers[0], inner: first.fail, stage: first.stage } };
   }
 
+  // What kind of DNS server is at this address? Used to explain where names get answered.
+  function dnsKind(T, ip) {
+    const v = VIRTUAL[ip];
+    if (v && v.dns) return { kind: 'public', text: `${IP.str(ip)} (${v.name}), a public DNS server on the Internet`, short: 'a public DNS server on the Internet' };
+    const i = T.ifaces.find(x => x.ip === ip && usable(x));
+    if (!i) return { kind: 'none', text: IP.str(ip), short: 'nothing answers at this address' };
+    const d = T.devs[i.dev];
+    if (d.config.dnsProxy) return { kind: 'relay', text: `${d.name} (${IP.str(ip)}), a router that passes DNS questions on`, short: `${d.name}, a router that passes DNS questions on` };
+    if (d.config.services && d.config.services.dns) return { kind: 'internal', text: `${d.name} (${IP.str(ip)}), an internal DNS server`, short: `${d.name}, an internal DNS server` };
+    return { kind: 'not-dns', text: `${d.name} (${IP.str(ip)}), which isn't a DNS server`, short: `${d.name}, which isn't a DNS server` };
+  }
+
+  // How a successful lookup was answered, as plain sentences: who asked whom, and who knew the answer.
+  function dnsStory(T, name, r) {
+    if (!r.ok || !r.steps.length) return [];
+    const lines = [];
+    r.steps.forEach((t, k) => {
+      const asker = T.devs[t.from].name, server = dnsKind(T, t.dst).text;
+      if (k === 0) lines.push(`${asker} asked its DNS server, ${server}.`);
+      else if (r.steps[k - 1].svc.local) lines.push(`${asker} had no record for ${name}, so it asked its own DNS server, ${server}.`);
+      else lines.push(`${asker} keeps no records itself, so it asked its own DNS server, ${server}.`);
+    });
+    const last = r.steps[r.steps.length - 1];
+    lines.push(last.svc.local ? `${T.devs[last.req.dev].name} answered from its own records: ${name} is ${IP.str(r.ip)}.`
+      : `${IP.str(last.dst)} answered: ${name} is ${IP.str(r.ip)}.`);
+    return lines;
+  }
+
+  // Well-known ports and the protocol each one uses, to catch "TCP 53" style mix-ups.
+  const WELL_KNOWN = {
+    22: ['tcp', 'SSH'], 53: ['udp', 'DNS'], 67: ['udp', 'DHCP'], 68: ['udp', 'DHCP'],
+    80: ['tcp', 'web (HTTP)'], 443: ['tcp', 'secure web (HTTPS)'], 445: ['tcp', 'file sharing (SMB)'],
+  };
+  const wellKnown = port => { const w = WELL_KNOWN[Number(port)]; return w ? { proto: w[0], name: w[1] } : null; };
+
   function browse(T, fromId, url) {
     const host = String(url).replace(/^https?:\/\//i, '').split(/[/:?#]/)[0].toLowerCase();
     const r = resolve(T, fromId, host);
@@ -665,6 +700,7 @@
 
   NG.Sim = {
     build, route, transact, resolve, browse, openShare, testPort, shareHost, externalVisit, l2path, explain, usable, dnsServersOf,
+    dnsKind, dnsStory, wellKnown,
     listening, svcByPort, sshAllowed, parseRange, ruleText, checkAcl, aclLint, parseVlans, portVlan, SERVICES, VIRTUAL, ISP, REMOTE,
   };
 })();

@@ -346,6 +346,7 @@
       b.onclick = () => { const [r] = rules.splice(Number(b.dataset.aclDel), 1); changed(`removed access rule “${S.ruleText(r)}”`); };
     });
     const protoSel = $('#acl-proto', root), portIn = $('#acl-port', root);
+    let warned = null; // the rule last warned about, so pressing Add again adds it
     $('#acl-add', root).onclick = () => {
       const norm = v => { v = v.trim().toLowerCase(); return v === '' ? 'any' : v; };
       const src = norm($('#acl-src', root).value), dst = norm($('#acl-dst', root).value), proto = protoSel.value, port = portIn.value.trim();
@@ -358,6 +359,14 @@
         || (port && proto !== 'tcp' && proto !== 'udp' ? `Ports belong to TCP or UDP. Choose one in the protocol box (file sharing on ${port === '445' ? '445 is TCP' : 'a port is usually TCP'}), or clear the port.` : '');
       if (err) { $('#acl-err', root).textContent = '⚠ ' + err; return; }
       const r = { action: $('#acl-action', root).value, src, dst, proto, port };
+      // A well-known port with the other protocol (e.g. TCP 53) is almost always a slip: warn once, add on a second press.
+      const w = port && S.wellKnown(port), key = JSON.stringify(r);
+      if (w && w.proto !== proto && warned !== key) {
+        warned = key;
+        $('#acl-err', root).textContent = `⚠ Port ${port} is ${w.name}, which uses ${w.proto.toUpperCase()}, not ${proto.toUpperCase()}. `
+          + 'Change the protocol, or press Add rule again to add it anyway.';
+        return;
+      }
       rules.push(r);
       changed(`added access rule ${rules.length}: “${S.ruleText(r)}”`);
     };

@@ -19,7 +19,9 @@ First-time visitors see a short welcome with a link to it, and the game's top ba
 - The **Subnet helper** (top bar) shows how an address block splits into subnets, in decimal and binary.
 - A level completes only when every objective holds at the same time. If a later change breaks a step you had already done, it turns red.
 - The win screen reviews your solution (unused rules, oversized subnets, addresses inside a DHCP pool…), and every level has a **model solution**.
-- Progress is saved in your browser. Levels unlock in order (tick *Unlock all levels* in the Levels menu for teacher mode).
+- A timer runs on each level (from **Start** on the briefing until the level is complete), with your personal best per level.
+  It is never a time limit: it is there so replaying a level is practice. Looking at the model solution first means that run can't set a best.
+- Progress and best times are saved in your browser. Levels unlock in order (tick *Unlock all levels* in the Levels menu for teacher mode).
 
 ## Levels
 

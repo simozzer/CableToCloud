@@ -37,6 +37,33 @@
     $('#btn-sound').textContent = G.progress.muted ? '♪ Sound: off' : '♪ Sound: on';
   }
 
+  // ---------- Level timer ----------
+  // Not a time limit: a stopwatch for each attempt, so replaying a level becomes practice. Personal bests are saved per level.
+  // It starts when the briefing is closed with Start, and stops when the level is complete. Viewing the model solution
+  // before finishing means that run can't set a best.
+  const fmtTime = ms => { const s = Math.floor(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+  G.timer = { started: null, stopped: null, sawSolution: false };
+  G.startTimer = () => { if (G.timer.started == null && !G.done) G.timer.started = Date.now(); renderTimer(); };
+  G.elapsed = () => (G.timer.started == null ? 0 : (G.timer.stopped || Date.now()) - G.timer.started);
+  const bestOf = id => (G.progress.best || {})[id];
+  function renderTimer() {
+    const el = $('#timer');
+    if (!el || !G.level) return;
+    const best = bestOf(G.level.id);
+    el.innerHTML = `⏱ <b>${fmtTime(G.elapsed())}</b>${best != null ? ` <small>· best ${fmtTime(best)}</small>` : ''}`;
+    el.classList.toggle('stopped', G.timer.stopped != null);
+  }
+  // Called once when a level is completed: stop the clock and keep the time if it's a new best.
+  function finishTimer() {
+    if (G.timer.started == null) { G.lastRun = null; return; }
+    G.timer.stopped = Date.now();
+    const time = G.elapsed(), previous = bestOf(G.level.id);
+    const newBest = !G.timer.sawSolution && (previous == null || time < previous);
+    if (newBest) G.progress.best = Object.assign({}, G.progress.best, { [G.level.id]: time });
+    G.lastRun = { time, previous, newBest, sawSolution: G.timer.sawSolution };
+    renderTimer();
+  }
+
   G.dev = id => G.net.devices.find(d => d.id === id);
   G.link = id => G.net.links.find(l => l.id === id);
   const nameOf = id => { const d = G.dev(id); return d ? d.name : '?'; };
@@ -63,6 +90,7 @@
       NG.Fx.tick();
     };
     document.addEventListener('keydown', onKey);
+    setInterval(renderTimer, 250);
     loadProgress();
     updateHeader();
     G.setTool('select');
@@ -99,6 +127,9 @@
   G.loadLevel = function (idx) {
     const L = NG.Levels[idx];
     Object.assign(G, { level: L, levelIndex: idx, net: Model.create(), events: [], done: false, sel: null, cableFrom: null, hintIdx: 0, T: null, prevRes: null });
+    G.timer = { started: null, stopped: null, sawSolution: false };
+    G.lastRun = null;
+    renderTimer();
     L.setup(G.net, Model);
     NG.Canvas.clearAnim();
     NG.Terminal.reset();
@@ -118,7 +149,7 @@
       <h2>${esc(L.title)}</h2><p class="subtitle">${esc(L.subtitle)}</p>
       ${L.briefing}
       <h4>Your objectives</h4><ol class="obj-preview">${L.objectives.map(o => `<li>${o.text}</li>`).join('')}</ol>
-    </div>`, [{ label: 'Start ▶', cls: 'primary', onClick: G.closeModal }]);
+    </div>`, [{ label: 'Start ▶', cls: 'primary', onClick: () => { G.closeModal(); G.startTimer(); } }]);
     $$('#modal [data-explorer]').forEach(b => { b.onclick = () => NG.Explorer.open(b.dataset.explorer, G.showBriefing); });
   };
 
@@ -128,13 +159,13 @@
       return `<button class="lvl-card ${i === G.levelIndex ? 'current' : ''} ${done ? 'done' : ''}" data-i="${i}" ${open ? '' : 'disabled'}>
         <span class="n">${done ? '✓' : i + 1}</span>
         <span class="grow"><b>${esc(L.title)}</b><small>${esc(L.subtitle)}</small></span>
-        <span class="state">${done ? 'Complete' : open ? '' : 'Locked'}</span></button>`;
+        <span class="state">${done ? 'Complete' : open ? '' : 'Locked'}${bestOf(L.id) != null ? `<small>⏱ best ${fmtTime(bestOf(L.id))}</small>` : ''}</span></button>`;
     }).join('')}</div>
       <label class="check teacher"><input type="checkbox" id="unlock-all" ${G.progress.unlockAll ? 'checked' : ''}> Unlock all levels (teacher mode)</label>`,
     [
-      { label: 'Reset progress', cls: 'danger', onClick: () => G.modal('<h2>Reset progress?</h2><p>All levels will be marked as not completed.</p>', [
+      { label: 'Reset progress', cls: 'danger', onClick: () => G.modal('<h2>Reset progress?</h2><p>All levels will be marked as not completed, and your best times cleared.</p>', [
         { label: 'Cancel', onClick: G.showLevels },
-        { label: 'Reset', cls: 'primary', onClick: () => { G.progress.completed = []; saveProgress(); updateHeader(); G.closeModal(); G.loadLevel(0); } },
+        { label: 'Reset', cls: 'primary', onClick: () => { G.progress.completed = []; G.progress.best = {}; saveProgress(); updateHeader(); G.closeModal(); G.loadLevel(0); } },
       ]) },
       { label: 'Close', onClick: G.closeModal },
     ]);
@@ -151,7 +182,14 @@
     if (L.solution) buttons.push({ label: 'Model solution', onClick: () => G.showSolution(() => G.showWin(true)) });
     if (next) buttons.push({ label: `Next: ${next.title} →`, cls: 'primary', onClick: () => { G.closeModal(); G.loadLevel(G.levelIndex + 1); } });
     if (!quiet) { NG.Fx.win(); NG.Fx.confetti(); }
+    const run = G.lastRun;
+    const timeLine = !run ? '' : `<p class="run-time">⏱ Your time <b>${fmtTime(run.time)}</b>${
+      run.sawSolution ? ' <span class="muted">(you looked at the model solution, so it doesn’t count as a best)</span>'
+        : run.newBest ? (run.previous != null ? ` · <span class="good">New personal best!</span> (was ${fmtTime(run.previous)})` : ' · <span class="good">your first best time</span>')
+          : ` · <span class="muted">best ${fmtTime(run.previous)}</span>`}</p>
+      <p class="small muted">Replay any level from the Levels menu to practise and beat your time.</p>`;
     G.modal(`<div class="win"><div class="badge">✓</div><h2>Level complete!</h2><h3>${esc(L.title)}</h3>
+      ${timeLine}
       <div class="review ${notes.length ? 'has-notes' : ''}"><h4>How good is your solution?</h4>
         ${notes.length ? `<p class="small">Everything required works. A few things could be better:</p><ul>${notes.map(n => `<li>${n}</li>`).join('')}</ul>`
           : '<p class="small">✓ All requirements met, and nothing to tidy up. That’s as clean as the model solution.</p>'}</div>
@@ -162,6 +200,7 @@
   // back: where "Back" goes (the win screen), otherwise the modal just closes.
   G.showSolution = function (back) {
     const L = G.level;
+    if (!G.done) G.timer.sawSolution = true; // this run can't set a best time
     G.modal(`<div class="solution"><h2>Model solution</h2><h3>${esc(L.title)}</h3>${L.solution}</div>`,
       [{ label: back ? '← Back' : 'Close', cls: 'primary', onClick: back || G.closeModal }], 'wide');
   };
@@ -265,7 +304,8 @@
     if (fresh.some(Boolean) && n < L.objectives.length) NG.Fx.tick();
     if (n === L.objectives.length && !G.done) {
       G.done = true;
-      G.log(`Level complete: ${L.title}`, 'ok');
+      finishTimer();
+      G.log(`Level complete: ${L.title}${G.lastRun ? ` in ${fmtTime(G.lastRun.time)}` : ''}`, 'ok');
       if (!G.progress.completed.includes(L.id)) G.progress.completed.push(L.id);
       saveProgress();
       updateHeader();

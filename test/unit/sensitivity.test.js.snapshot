@@ -261,7 +261,7 @@ unplug Staff-SW:P2–Staff-PC:eth0                           breaks 3, 6
 unplug Guest-SW:P2–Guest-Laptop:eth0                       breaks 2, 3, 4, 5
 unplug Servers-SW:P2–DNS1:eth0                             breaks 6
 unplug Servers-SW:P3–FS1:eth0                              breaks 6
-Router1: rule 1 (deny 10.1.50.0/24 → 10.0.0.0/8 any) removed breaks 2, 3
+Router1: rule 1 (deny 10.1.50.0/24 → 10.1.0.0/16 any) removed breaks 2, 3
 Router1: rule 2 (permit any → any any) removed             breaks 4, 5, 6
 Router1: Gi0/1 DHCP off                                    breaks 3, 6
 Router1: Gi0/1 DHCP hands out DNS 9.9.9.9                  breaks 6
