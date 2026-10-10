@@ -68,6 +68,21 @@
     G.setTool('select');
     const next = NG.Levels.findIndex((_, i) => !isDone(i));
     G.loadLevel(next < 0 ? NG.Levels.length - 1 : next);
+    if (!G.progress.welcomed) G.showWelcome();
+  };
+
+  // Shown once, on a first visit: what this is, with a link to the About page.
+  G.showWelcome = function () {
+    G.progress.welcomed = true;
+    saveProgress();
+    G.modal(`<div class="welcome"><div class="logo">◈</div><h2>Welcome to CableToCloud</h2>
+      <p>Learn networking by building it. Plug in cables, set up addresses and routers, and watch packets travel.
+      When something doesn’t work, the game tells you <b>why</b>.</p>
+      <p class="small muted">${NG.Levels.length} levels, from plugging in your first computer to firewalls, VLANs and jump hosts. No experience needed.</p>
+      <p class="small muted">© 2026 Simon Moscrop</p></div>`, [
+      { label: 'About CableToCloud', onClick: () => { location.href = 'about.html'; } },
+      { label: `Start Level ${G.levelIndex + 1} ▶`, cls: 'primary', onClick: G.showBriefing },
+    ]);
   };
 
   function onKey(e) {

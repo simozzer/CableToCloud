@@ -1,0 +1,78 @@
+/* The About page. Colours and fonts come from style.css; this page scrolls like a normal web page. */
+body.about { display: block; overflow: auto; height: auto; min-height: 100%; }
+.about a { color: var(--accent); }
+.about main { max-width: 1040px; margin: 0 auto; padding: 0 16px 40px; }
+.about section { margin: 56px 0; }
+.about h2 { font-size: 26px; margin: 0 0 12px; }
+.about h3 { margin: 0 0 6px; }
+.about p { max-width: 70ch; }
+
+.about-top {
+  position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 10px 16px; background: color-mix(in srgb, var(--bg) 92%, transparent); border-bottom: 1px solid var(--border);
+}
+.about-top .brand { color: var(--text); text-decoration: none; font-weight: 700; font-size: 18px; }
+.about-top .logo { color: var(--accent); }
+.about-top nav { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.about-top nav a { color: var(--muted); text-decoration: none; }
+.about-top nav a:hover { color: var(--text); }
+
+.btn {
+  display: inline-block; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--panel2); color: var(--text) !important; text-decoration: none; font-weight: 600;
+}
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: #0e7490; border-color: #0891b2; color: #fff !important; }
+.btn.big { padding: 11px 20px; font-size: 16px; }
+
+.hero { text-align: center; margin-top: 64px !important; }
+.hero h1 { font-size: clamp(30px, 6vw, 52px); line-height: 1.1; margin: 0 0 16px; }
+.hero h1 span { color: var(--accent); }
+.hero .lead { font-size: 18px; margin: 0 auto 22px; color: #c3d3ea; }
+.hero .cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 12px; }
+.hero .small { margin: 0 auto; }
+
+.features { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.feature, .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
+.feature p, .card p { margin: 0; color: #c3d3ea; }
+.feature .icon {
+  width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; margin-bottom: 10px;
+  background: color-mix(in srgb, var(--accent) 18%, var(--panel)); color: var(--accent); font: 700 17px var(--mono);
+}
+
+.example { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 24px; align-items: center; }
+.term {
+  background: #050a14; border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+  font: 12.5px/1.55 var(--mono); white-space: pre-wrap; color: #cbd5e1;
+}
+.term .cmd { color: #e2e8f0; font-weight: 700; }
+.term .err { color: var(--bad); }
+.term .why { color: var(--warn); }
+
+.chapters { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.chapter { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
+.chapter p { margin: 0 0 8px; }
+.chapter ol { margin: 0; padding-left: 26px; }
+.chapter li { margin: 7px 0; }
+.chapter li b { display: block; }
+.chapter li span { color: var(--muted); font-size: 13px; }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.ticks, .plain { padding-left: 0; list-style: none; max-width: 80ch; }
+.ticks li, .plain li { margin: 10px 0; padding-left: 28px; position: relative; color: #c3d3ea; }
+.ticks li::before { content: '✓'; position: absolute; left: 0; color: var(--good); font-weight: 700; }
+.plain li::before { content: '–'; position: absolute; left: 6px; color: var(--muted); }
+.ticks b, .plain b { color: var(--text); }
+
+.final { text-align: center; }
+.about-foot {
+  display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 18px 16px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px;
+}
+
+@media (max-width: 720px) {
+  .example { grid-template-columns: 1fr; }
+  .about section { margin: 40px 0; }
+  .hero { margin-top: 36px !important; }
+  .about-top nav a:not(.btn) { display: none; }
+}

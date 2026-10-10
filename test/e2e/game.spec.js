@@ -4,15 +4,38 @@ const { test, expect } = require('@playwright/test');
 const { APP, openLevel, deviceId, select, run, terminalText, objectives } = require('./helpers');
 const { play } = require('../load');
 
-test('the game loads with no errors and lists every level', async ({ page }) => {
+test('a first visit shows the welcome once, then the briefing; the game lists every level', async ({ page }) => {
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
   await page.goto(APP);
+  await expect(page.locator('#modal .welcome h2')).toHaveText('Welcome to CableToCloud');
+  await expect(page.locator('#modal .welcome')).toContainText('© 2026 Simon Moscrop');
+  await page.getByRole('button', { name: 'Start Level 1 ▶' }).click();
   await expect(page.locator('#modal .brief h2')).toHaveText('Hello, Internet');
   await page.getByRole('button', { name: 'Start ▶' }).click();
   await page.locator('#btn-levels').click();
   const count = await page.evaluate(() => NG.Levels.length);
   await expect(page.locator('.lvl-card')).toHaveCount(count);
+  await page.reload();
+  await expect(page.locator('#modal .brief h2')).toHaveText('Hello, Internet', { timeout: 5000 });
+  expect(errors).toEqual([]);
+});
+
+test('the About page lists every level, links to the game and shows the copyright', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.goto(APP.replace('index.html', 'about.html'));
+  await expect(page.locator('h1')).toContainText('Learn networking by');
+  const titles = await page.evaluate(() => NG.Levels.map(L => L.title));
+  await expect(page.locator('#chapters li')).toHaveCount(titles.length);
+  await expect(page.locator('#chapters li b').first()).toHaveText(titles[0]);
+  await expect(page.locator('#chapters li b').last()).toHaveText(titles[titles.length - 1]);
+  await expect(page.locator('footer')).toContainText('© 2026 Simon Moscrop');
+  await page.getByRole('link', { name: 'Start playing ▶' }).click();
+  await page.getByRole('button', { name: 'Start Level 1 ▶' }).click();
+  await page.getByRole('button', { name: 'Start ▶' }).click();
+  await page.locator('#btn-about').click();
+  await expect(page).toHaveURL(/about\.html$/);
   expect(errors).toEqual([]);
 });
 

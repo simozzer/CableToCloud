@@ -49,6 +49,14 @@ button.danger { background: transparent; border-color: #7f1d1d; color: var(--bad
 #level-title { flex: 1; font-weight: 600; }
 #level-title small { color: var(--muted); font-weight: 400; margin-left: 8px; }
 .top-actions { display: flex; gap: 8px; }
+.top-link {
+  display: inline-flex; align-items: center; color: var(--text); text-decoration: none; background: var(--panel2);
+  border: 1px solid var(--border); border-radius: 7px; padding: 6px 11px;
+}
+.top-link:hover { border-color: var(--accent); }
+.welcome { text-align: center; }
+.welcome .logo { font-size: 40px; color: var(--accent); line-height: 1; }
+.welcome p { max-width: 52ch; margin-left: auto; margin-right: auto; }
 
 #layout { flex: 1; min-height: 0; display: grid; grid-template-columns: 210px 1fr 350px; }
 #left, #right { background: var(--panel); overflow-y: auto; }

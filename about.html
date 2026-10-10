@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>About CableToCloud: Learn Networking by Building It</title>
+  <meta name="description" content="A free browser game that teaches IPv4 networking by building real networks: cables, IP addresses, DHCP, routing, DNS, NAT, subnetting, firewalls, VLANs and more, with a plain-English explanation whenever something fails.">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/about.css">
+</head>
+<body class="about">
+  <header class="about-top">
+    <a class="brand" href="index.html"><span class="logo">◈</span> CableToCloud</a>
+    <nav>
+      <a href="#learn">Levels</a>
+      <a href="#who">Who it’s for</a>
+      <a href="#simplified">What’s simplified</a>
+      <a class="btn primary" href="index.html">Play ▶</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <h1>Learn networking by <span>building it</span></h1>
+      <p class="lead">CableToCloud is a free game that runs in your browser. You plug in cables, give devices addresses, set up routers,
+        and watch packets travel. When something doesn’t work, it tells you <b>why</b> in plain English.</p>
+      <div class="cta">
+        <a class="btn primary big" href="index.html">Start playing ▶</a>
+        <a class="btn big" href="#learn">See what you’ll learn</a>
+      </div>
+      <p class="small muted">No installation, no account, no ads. Your progress is saved in your own browser.</p>
+    </section>
+
+    <section class="features">
+      <div class="feature">
+        <div class="icon">⇄</div>
+        <h3>Build</h3>
+        <p>Drag computers, switches, routers and servers onto the workspace and cable them together, port by port.</p>
+      </div>
+      <div class="feature">
+        <div class="icon">⚙</div>
+        <h3>Configure</h3>
+        <p>Real settings: IP addresses and masks, gateways, DHCP pools, DNS records, port forwarding, access rules, VLANs.</p>
+      </div>
+      <div class="feature">
+        <div class="icon">›_</div>
+        <h3>Test</h3>
+        <p>Each computer has a terminal: <code>ipconfig</code>, <code>ping</code>, <code>nslookup</code>, <code>browse</code>,
+          <code>test</code>, <code>ssh</code>. Watch every packet’s journey on screen.</p>
+      </div>
+      <div class="feature">
+        <div class="icon">?</div>
+        <h3>Understand</h3>
+        <p>Every failure comes with an explanation of what went wrong and where, so mistakes become lessons.</p>
+      </div>
+    </section>
+
+    <section class="example">
+      <div>
+        <h2>Mistakes explain themselves</h2>
+        <p>Real networks fail silently: a ping just times out. In CableToCloud the simulation knows exactly where the packet stopped,
+          and says so. Learning to read those clues is learning to troubleshoot.</p>
+      </div>
+      <div class="term" aria-label="Example terminal output"><span class="cmd">Sales-PC&gt; open \\hr.office</span>
+Opening \\hr.office ...
+<span class="err">  Windows can't find \\hr.office.</span>
+<span class="why">Why? Sales-PC couldn't get an answer from its DNS server 10.1.99.53.
+Router1's access rules blocked UDP port 53 from 10.1.10.100 to 10.1.99.53.
+No rule matched, so the built-in “deny everything else” at the end of
+the list blocked it. Every name has to be looked up in DNS before
+anything else happens. Permit DNS (UDP port 53 to 10.1.99.53), or end
+the list with permit any → any.</span></div>
+    </section>
+
+    <section id="learn">
+      <h2>What you’ll learn</h2>
+      <p>Each level adds one new idea, with a short briefing, hints if you need them, and a model solution at the end.
+        Your answer doesn’t have to match it: any network that works is accepted, and the game points out anything that could be tidier.</p>
+      <div id="chapters" class="chapters"></div>
+    </section>
+
+    <section id="who">
+      <h2>Who it’s for</h2>
+      <div class="cards">
+        <div class="card"><h3>Curious beginners</h3>
+          <p>No experience needed. Level 1 starts with plugging a single computer into a home router.</p></div>
+        <div class="card"><h3>People refreshing old knowledge</h3>
+          <p>Learned this years ago? The levels move quickly from basics to DMZs, VLANs and jump hosts.</p></div>
+        <div class="card"><h3>Students</h3>
+          <p>Covers the IPv4 fundamentals in most introductory networking courses and entry-level certifications,
+            with practice that a textbook can’t give.</p></div>
+        <div class="card"><h3>Teachers</h3>
+          <p>Nothing to install and no accounts: share a link, or open <code>index.html</code> straight from a folder.
+            <b>Teacher mode</b> (in the Levels menu) unlocks every level.</p></div>
+      </div>
+    </section>
+
+    <section class="judge">
+      <h2>How levels are checked</h2>
+      <ul class="ticks">
+        <li><b>Live objectives.</b> The checklist ticks itself as your network starts working.</li>
+        <li><b>Nothing counts until it all works at once.</b> If a later change breaks a step you had already done, that step turns red.</li>
+        <li><b>A review when you finish.</b> Unused firewall rules, oversized subnets or a static address inside a DHCP pool are pointed out,
+          even when everything works.</li>
+        <li><b>Hints, then the answer.</b> Hints give the solution away one step at a time; the model solution is always one click away.</li>
+      </ul>
+    </section>
+
+    <section id="simplified">
+      <h2>What’s simplified</h2>
+      <p>The simulation follows how real networks behave, but leaves some things out to keep the focus on the ideas:</p>
+      <ul class="plain">
+        <li><b>IPv4 only.</b> No IPv6, and no Wi-Fi radio: every connection is a cable.</li>
+        <li><b>Routers know their own networks plus a default route.</b> There are no routing protocols (such as OSPF) or extra static routes.</li>
+        <li><b>Switches just work.</b> They learn instantly; there are no MAC address tables or loop prevention to manage.</li>
+        <li><b>Connections are a request and a reply.</b> TCP handshakes, timeouts and packet sizes aren’t modelled.</li>
+        <li><b>A small Internet.</b> A few public servers (such as <code>8.8.8.8</code> and <code>www.example.com</code>) and one customer.</li>
+        <li><b>Firewall rules are simple.</b> Replies to allowed connections are let back automatically, as a stateful firewall would.</li>
+      </ul>
+    </section>
+
+    <section class="behind">
+      <h2>Behind the scenes</h2>
+      <p>CableToCloud is plain HTML, CSS and JavaScript with no dependencies, and the source is
+        <a href="https://github.com/simozzer/CableToCloud">on GitHub</a>. The simulation and every level are covered by an automated test
+        suite, including checks that each level’s model solution works and that plausible wrong answers don’t.</p>
+    </section>
+
+    <section class="final">
+      <h2>Ready?</h2>
+      <a class="btn primary big" href="index.html">Start with Level 1 ▶</a>
+    </section>
+  </main>
+
+  <footer class="about-foot">
+    <span>© 2026 Simon Moscrop. All rights reserved.</span>
+    <a href="https://github.com/simozzer/CableToCloud">Source on GitHub</a>
+  </footer>
+
+  <!-- The level list is built from the game's own level definitions, so it is always up to date. -->
+  <script src="js/util.js"></script>
+  <script src="js/ip.js"></script>
+  <script src="js/model.js"></script>
+  <script src="js/sim.js"></script>
+  <script src="js/levels.js"></script>
+  <script src="js/about.js"></script>
+</body>
+</html>

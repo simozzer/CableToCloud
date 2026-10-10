@@ -6,6 +6,10 @@ and watch packets travel (or fail, with an explanation of why).
 ## Play
 
 Open `index.html` in a web browser. There is nothing to install or build, and it works straight from the file system.
+Or play it online at <https://simozzer.github.io/CableToCloud/>.
+
+`about.html` is the introduction page: what the game is, who it's for, every level, and what the simulation simplifies.
+First-time visitors see a short welcome with a link to it, and the game's top bar has an **About** button.
 
 ## How it works
 
@@ -56,6 +60,7 @@ Plain HTML, CSS and JavaScript. The game itself has no dependencies; Node.js is 
 | `js/explorer.js` | Subnet helper |
 | `js/game.js` | Game controller: levels, objectives, progress |
 | `js/fx.js` | Sound effects and confetti |
+| `about.html`, `js/about.js`, `css/about.css` | The About page (its level list is built from `js/levels.js`) |
 
 ## Tests
 
@@ -120,3 +125,7 @@ The current score is about 97%. The remaining survivors are mostly extra safety 
 ## Ideas for the future
 
 Containers (bridge networks and published ports), SSH tunnels and cloud networking (VPCs, security groups, load balancers).
+
+## Copyright
+
+© 2026 Simon Moscrop. All rights reserved.
