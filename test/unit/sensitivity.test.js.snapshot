@@ -1,0 +1,686 @@
+exports[`level 1 (dhcp): what breaks each objective 1`] = `
+
+unplug Internet1:ISP–Router1:WAN                           breaks 6
+unplug Router1:LAN1–PC1:eth0                               breaks 2, 4, 6
+Router1: LAN DHCP off                                      breaks 4, 6
+PC1: not configured                                        breaks 3, 4, 6
+command 1 (ipconfig 192.168.1.100): removed                breaks 5
+command 1 (ipconfig 192.168.1.100): source static          breaks 5
+command 1 (ipconfig 192.168.1.100): another command        breaks 5
+command 2 (ping 8.8.8.8): removed                          breaks 6
+command 2 (ping 8.8.8.8): failed instead                   breaks 6
+command 2 (ping 8.8.8.8): other destination                breaks 6
+command 2 (ping 8.8.8.8): another command                  breaks 6
+
+`;
+
+exports[`level 10 (subnet-halves): what breaks each objective 1`] = `
+
+unplug Internet1:ISP–Router1:Gi0/0                         breaks 5
+unplug Router1:Gi0/1–Office-SW:P1                          breaks 5
+unplug Office-SW:P2–Office-PC:eth0                         breaks 5
+unplug Router1:Gi0/2–Lab-SW:P1                             breaks 5
+unplug Lab-SW:P2–Lab-PC:eth0                               breaks 5
+Router1: Gi0/1 DHCP off                                    breaks 4, 5
+Router1: Gi0/1 DHCP hands out DNS 9.9.9.9                  breaks 5
+Router1: Gi0/2 DHCP off                                    breaks 4, 5
+Router1: Gi0/2 DHCP hands out DNS 9.9.9.9                  breaks 5
+Office-PC: not configured                                  breaks 5
+Lab-PC: not configured                                     breaks 5
+
+`;
+
+exports[`level 11 (subnetting): what breaks each objective 1`] = `
+
+unplug Internet1:ISP–Router1:Gi0/0                         breaks 6
+unplug Router1:Gi0/1–Sales-SW:P1                           breaks 6
+unplug Sales-SW:P2–Sales-PC:eth0                           breaks 6
+unplug Router1:Gi0/2–Engineering-SW:P1                     breaks 6
+unplug Engineering-SW:P2–Engineering-PC:eth0               breaks 6
+unplug Router1:Gi0/3–Management-SW:P1                      breaks 6
+unplug Management-SW:P2–Management-PC:eth0                 breaks 6
+Router1: Gi0/1 DHCP off                                    breaks 5, 6
+Router1: Gi0/1 DHCP hands out DNS 9.9.9.9                  breaks 6
+Router1: Gi0/2 DHCP off                                    breaks 5, 6
+Router1: Gi0/2 DHCP hands out DNS 9.9.9.9                  breaks 6
+Router1: Gi0/3 DHCP off                                    breaks 5, 6
+Router1: Gi0/3 DHCP hands out DNS 9.9.9.9                  breaks 6
+Sales-PC: not configured                                   breaks 6
+Engineering-PC: not configured                             breaks 6
+Management-PC: not configured                              breaks 6
+
+`;
+
+exports[`level 12 (fileserver): what breaks each objective 1`] = `
+
+unplug Internet1:ISP–Router1:Gi0/0                         breaks 2
+unplug Router1:Gi0/1–Sales-SW:P1                           breaks 2, 7, 8
+unplug Sales-SW:P2–Sales-PC:eth0                           breaks 2, 7, 8
+unplug Router1:Gi0/2–HR-SW:P1                              breaks 2, 7, 8
+unplug HR-SW:P2–HR-PC:eth0                                 breaks 2, 7, 8
+unplug Router1:Gi0/3–Servers-SW:P1                         breaks 2, 3, 7, 8
+unplug Servers-SW:P2–DNS1:eth0                             breaks 2, 7, 8
+unplug Servers-SW:P3–Server1:eth0                          breaks 3, 7, 8
+Router1: Gi0/1 DHCP off                                    breaks 2, 7, 8
+Router1: Gi0/1 DHCP hands out DNS 9.9.9.9                  breaks 2, 7, 8
+Router1: Gi0/2 DHCP off                                    breaks 2, 7, 8
+Router1: Gi0/2 DHCP hands out DNS 9.9.9.9                  breaks 2, 7, 8
+Router1: Gi0/3 next IP address                             breaks 1, 2, 7, 8
+Sales-PC: not configured                                   breaks 2, 7, 8
+HR-PC: not configured                                      breaks 2, 7, 8
+DNS1: next IP address                                      breaks 2, 7, 8
+DNS1: mask /16                                             breaks 2, 7, 8
+DNS1: no gateway                                           breaks 2, 7, 8
+DNS1: no DNS server                                        breaks 2
+DNS1: DHCP instead of static                               breaks 2, 7, 8
+DNS1: dns service off                                      breaks 2, 7, 8
+DNS1: DNS record files.office removed                      breaks 6, 7, 8
+Server1: next IP address                                   breaks 3, 7, 8
+Server1: mask /16                                          breaks 3, 7, 8
+Server1: no gateway                                        breaks 4, 7, 8
+Server1: no DNS server                                     breaks 4
+Server1: DHCP instead of static                            breaks 3, 4, 7, 8
+Server1: files service off                                 breaks 5, 7, 8
+command 1 (open files.office): removed                     breaks 8
+command 1 (open files.office): failed instead              breaks 8
+command 1 (open files.office): from another device         breaks 8
+command 1 (open files.office): other host                  breaks 8
+command 1 (open files.office): another command             breaks 8
+command 2 (open files.office): removed                     breaks 8
+command 2 (open files.office): failed instead              breaks 8
+command 2 (open files.office): from another device         breaks 8
+command 2 (open files.office): other host                  breaks 8
+command 2 (open files.office): another command             breaks 8
+
+`;
+
+exports[`level 13 (ports): what breaks each objective 1`] = `
+
+unplug Router1:Gi0/1–Sales-SW:P1                           breaks 1, 6, 7
+unplug Sales-SW:P2–Sales-PC:eth0                           breaks 1, 6, 7
+unplug Router1:Gi0/2–HR-SW:P1                              breaks 1, 6, 7
+unplug HR-SW:P2–HR-PC:eth0                                 breaks 1, 6, 7
+unplug Router1:Gi0/3–Servers-SW:P1                         breaks 1, 6, 7
+unplug Servers-SW:P2–DNS1:eth0                             breaks 1, 6, 7
+unplug Servers-SW:P3–FS1:eth0                              breaks 1, 6, 7
+Router1: Gi0/1 DHCP off                                    breaks 1, 6, 7
+Router1: Gi0/1 DHCP hands out DNS 9.9.9.9                  breaks 1, 6, 7
+Router1: Gi0/2 DHCP off                                    breaks 1, 6, 7
+Router1: Gi0/2 DHCP hands out DNS 9.9.9.9                  breaks 1, 6, 7
+Router1: Gi0/3 next IP address                             breaks 1, 6, 7
+Sales-PC: not configured                                   breaks 1, 6, 7
+HR-PC: not configured                                      breaks 1, 6, 7
+DNS1: next IP address                                      breaks 1, 6, 7
+DNS1: mask /16                                             breaks 1, 6, 7
+DNS1: no gateway                                           breaks 1, 6, 7
+DNS1: DHCP instead of static                               breaks 1, 6, 7
+DNS1: dns service off                                      breaks 1, 6, 7
+DNS1: DNS record files.office removed                      breaks 7
+DNS1: DNS record intranet.office removed                   breaks 1, 7
+DNS1: DNS record wiki.office removed                       breaks 6
+FS1: next IP address                                       breaks 1, 6, 7
+FS1: mask /16                                              breaks 1, 6, 7
+FS1: no gateway                                            breaks 1, 6, 7
+FS1: DHCP instead of static                                breaks 1, 6, 7
+FS1: web service off                                       breaks 1, 6, 7
+FS1: files service off                                     breaks 5, 7
+command 1 (browse intranet.office): removed                breaks 1
+command 1 (browse intranet.office): failed instead         breaks 1
+command 1 (browse intranet.office): other host             breaks 1
+command 1 (browse intranet.office): another command        breaks 1
+command 2 (open files.office): removed                     breaks 2
+command 2 (open files.office): other host                  breaks 2
+command 2 (open files.office): another command             breaks 2
+command 3 (test files.office:80): removed                  breaks 3
+command 3 (test files.office:80): other address            breaks 3
+command 3 (test files.office:80): other port               breaks 3
+command 3 (test files.office:80): another command          breaks 3
+command 4 (test files.office:445): removed                 breaks 3
+command 4 (test files.office:445): other address           breaks 3
+command 4 (test files.office:445): other port              breaks 3
+command 4 (test files.office:445): another command         breaks 3
+command 5 (netstat): removed                               breaks 4
+command 5 (netstat): from another device                   breaks 4
+command 5 (netstat): another command                       breaks 4
+command 6 (browse wiki.office): removed                    breaks 6
+command 6 (browse wiki.office): failed instead             breaks 6
+command 6 (browse wiki.office): other host                 breaks 6
+command 6 (browse wiki.office): another command            breaks 6
+
+`;
+
+exports[`level 14 (acl): what breaks each objective 1`] = `
+
+unplug Internet1:ISP–Router1:Gi0/0                         breaks 5
+unplug Router1:Gi0/1–Sales-SW:P1                           breaks 2, 4, 5, 6
+unplug Sales-SW:P2–Sales-PC:eth0                           breaks 2, 4, 5, 6
+unplug Router1:Gi0/2–HR-SW:P1                              breaks 3, 4, 5
+unplug HR-SW:P2–HR-PC:eth0                                 breaks 3, 4, 5
+unplug Router1:Gi0/3–Servers-SW:P1                         breaks 2, 3, 4, 5, 6
+unplug Servers-SW:P2–DNS1:eth0                             breaks 2, 3, 4, 5, 6
+unplug Servers-SW:P3–FS1:eth0                              breaks 4
+unplug Servers-SW:P4–HR-FS:eth0                            breaks 3
+Router1: rule 1 (permit 10.1.20.0/24 → 10.1.99.30 TCP 445) removed breaks 3
+Router1: rule 2 (deny any → 10.1.99.30 any) removed        breaks 2, 6
+Router1: rule 3 (permit any → any any) removed             breaks 2, 3, 4, 5, 6
+Router1: Gi0/1 DHCP off                                    breaks 2, 4, 5, 6
+Router1: Gi0/1 DHCP hands out DNS 9.9.9.9                  breaks 2, 4, 5, 6
+Router1: Gi0/2 DHCP off                                    breaks 3, 4, 5
+Router1: Gi0/2 DHCP hands out DNS 9.9.9.9                  breaks 3, 4, 5
+Router1: Gi0/3 next IP address                             breaks 2, 3, 4, 5, 6
+Sales-PC: not configured                                   breaks 2, 4, 5, 6
+HR-PC: not configured                                      breaks 3, 4, 5
+DNS1: next IP address                                      breaks 2, 3, 4, 5, 6
+DNS1: mask /16                                             breaks 2, 3, 4, 5, 6
+DNS1: no gateway                                           breaks 2, 3, 4, 5, 6
+DNS1: no DNS server                                        breaks 5
+DNS1: DHCP instead of static                               breaks 2, 3, 4, 5, 6
+DNS1: dns service off                                      breaks 2, 3, 4, 5, 6
+DNS1: DNS record files.office removed                      breaks 4
+DNS1: DNS record intranet.office removed                   breaks 4
+DNS1: DNS record hr.office removed                         breaks 2, 3, 6
+FS1: next IP address                                       breaks 4
+FS1: mask /16                                              breaks 4
+FS1: no gateway                                            breaks 4
+FS1: DHCP instead of static                                breaks 4
+FS1: web service off                                       breaks 4
+FS1: files service off                                     breaks 4
+HR-FS: next IP address                                     breaks 3
+HR-FS: mask /16                                            breaks 3
+HR-FS: no gateway                                          breaks 3
+HR-FS: DHCP instead of static                              breaks 3
+HR-FS: files service off                                   breaks 3
+command 1 (open hr.office): removed                        breaks 1
+command 1 (open hr.office): from another device            breaks 1
+command 1 (open hr.office): other host                     breaks 1
+command 1 (open hr.office): another command                breaks 1
+command 2 (test hr.office:445): removed                    breaks 6
+command 2 (test hr.office:445): from another device        breaks 6
+command 2 (test hr.office:445): other address              breaks 6
+command 2 (test hr.office:445): other port                 breaks 6
+command 2 (test hr.office:445): other failure reason       breaks 6
+command 2 (test hr.office:445): another command            breaks 6
+
+`;
+
+exports[`level 15 (acl-troubleshoot): what breaks each objective 1`] = `
+
+unplug Internet1:ISP–Router1:Gi0/0                         breaks 4
+unplug Router1:Gi0/1–Sales-SW:P1                           breaks 1, 2, 3, 4, 5, 6
+unplug Sales-SW:P2–Sales-PC:eth0                           breaks 1, 2, 3, 4, 5, 6
+unplug Router1:Gi0/2–HR-SW:P1                              breaks 1, 2, 3, 4, 5, 6
+unplug HR-SW:P2–HR-PC:eth0                                 breaks 1, 2, 3, 4, 5, 6
+unplug Router1:Gi0/3–Servers-SW:P1                         breaks 1, 2, 3, 4, 5
+unplug Servers-SW:P2–DNS1:eth0                             breaks 1, 2, 3, 4, 5
+unplug Servers-SW:P3–FS1:eth0                              breaks 2, 3
+unplug Servers-SW:P4–HR-FS:eth0                            breaks 5
+Router1: rule 1 (permit 10.1.20.0/24 → 10.1.99.30 TCP 445) removed breaks 5
+Router1: rule 2 (permit any → 10.1.99.20 TCP 80) removed   breaks 2
+Router1: rule 3 (permit any → 10.1.99.20 TCP 445) removed  breaks 3
+Router1: rule 4 (permit any → 10.1.99.53 UDP 53) removed   breaks 1, 2, 3, 4, 5
+Router1: rule 5 (deny 10.1.10.0/24 → 10.1.20.0/24 any) removed breaks 6
+Router1: rule 6 (deny any → 10.1.99.0/24 any) removed      breaks 5
+Router1: rule 7 (permit any → any any) removed             breaks 4
+Router1: Gi0/1 DHCP off                                    breaks 1, 2, 3, 4, 5, 6
+Router1: Gi0/1 DHCP hands out DNS 9.9.9.9                  breaks 1, 2, 3, 4, 5
+Router1: Gi0/2 DHCP off                                    breaks 1, 2, 3, 4, 5, 6
+Router1: Gi0/2 DHCP hands out DNS 9.9.9.9                  breaks 1, 2, 3, 4, 5
+Router1: Gi0/3 next IP address                             breaks 1, 2, 3, 4, 5
+Sales-PC: not configured                                   breaks 1, 2, 3, 4, 5, 6
+HR-PC: not configured                                      breaks 1, 2, 3, 4, 5, 6
+DNS1: next IP address                                      breaks 1, 2, 3, 4, 5
+DNS1: mask /16                                             breaks 1, 2, 3, 4, 5
+DNS1: no gateway                                           breaks 1, 2, 3, 4, 5
+DNS1: no DNS server                                        breaks 4
+DNS1: DHCP instead of static                               breaks 1, 2, 3, 4, 5
+DNS1: dns service off                                      breaks 1, 2, 3, 4, 5
+DNS1: DNS record files.office removed                      breaks 3
+DNS1: DNS record intranet.office removed                   breaks 1, 2
+DNS1: DNS record hr.office removed                         breaks 5
+FS1: next IP address                                       breaks 2, 3
+FS1: mask /16                                              breaks 2, 3
+FS1: no gateway                                            breaks 2, 3
+FS1: DHCP instead of static                                breaks 2, 3
+FS1: web service off                                       breaks 2
+FS1: files service off                                     breaks 3
+HR-FS: next IP address                                     breaks 5
+HR-FS: mask /16                                            breaks 5
+HR-FS: no gateway                                          breaks 5
+HR-FS: DHCP instead of static                              breaks 5
+HR-FS: files service off                                   breaks 5
+
+`;
+
+exports[`level 16 (guests): what breaks each objective 1`] = `
+
+unplug Internet1:ISP–Router1:Gi0/0                         breaks 4, 5, 6
+unplug Router1:Gi0/1–Staff-SW:P1                           breaks 3, 6
+unplug Router1:Gi0/2–Guest-SW:P1                           breaks 2, 3, 4, 5
+unplug Router1:Gi0/3–Servers-SW:P1                         breaks 6
+unplug Staff-SW:P2–Staff-PC:eth0                           breaks 3, 6
+unplug Guest-SW:P2–Guest-Laptop:eth0                       breaks 2, 3, 4, 5
+unplug Servers-SW:P2–DNS1:eth0                             breaks 6
+unplug Servers-SW:P3–FS1:eth0                              breaks 6
+Router1: rule 1 (deny 10.1.50.0/24 → 10.0.0.0/8 any) removed breaks 2, 3
+Router1: rule 2 (permit any → any any) removed             breaks 4, 5, 6
+Router1: Gi0/1 DHCP off                                    breaks 3, 6
+Router1: Gi0/1 DHCP hands out DNS 9.9.9.9                  breaks 6
+Router1: Gi0/2 DHCP off                                    breaks 2, 3, 4, 5
+Router1: Gi0/2 DHCP hands out DNS 9.9.9.9                  breaks 4, 5
+Router1: Gi0/3 next IP address                             breaks 6
+Staff-PC: not configured                                   breaks 3, 6
+Guest-Laptop: not configured                               breaks 2, 3, 4, 5
+DNS1: next IP address                                      breaks 6
+DNS1: mask /16                                             breaks 6
+DNS1: no gateway                                           breaks 6
+DNS1: no DNS server                                        breaks 6
+DNS1: DHCP instead of static                               breaks 6
+DNS1: dns service off                                      breaks 6
+DNS1: DNS record files.office removed                      breaks 6
+FS1: next IP address                                       breaks 6
+FS1: mask /16                                              breaks 6
+FS1: no gateway                                            breaks 6
+FS1: DHCP instead of static                                breaks 6
+FS1: files service off                                     breaks 6
+command 1 (open files.office): removed                     breaks 1
+command 1 (open files.office): from another device         breaks 1
+command 1 (open files.office): another command             breaks 1
+
+`;
+
+exports[`level 17 (dmz): what breaks each objective 1`] = `
+
+unplug Internet1:ISP–Router1:Gi0/0                         breaks 4, 7
+unplug Router1:Gi0/1–Staff-SW:P1                           breaks 5, 6, 7
+unplug Router1:Gi0/2–Servers-SW:P1                         breaks 5, 7
+unplug Router1:Gi0/3–DMZ-SW:P1                             breaks 3, 4, 5, 6, 7, 8
+unplug Staff-SW:P2–Staff-PC:eth0                           breaks 5, 6, 7
+unplug Servers-SW:P2–DNS1:eth0                             breaks 5, 7
+unplug Servers-SW:P3–FS1:eth0                              breaks 7
+unplug DMZ-SW:P2–WebServer:eth0                            breaks 3, 4, 5, 6, 7, 8
+Router1: port forward 80 → 10.1.200.80 removed             breaks 4
+Router1: rule 1 (deny 10.1.200.0/24 → 10.1.0.0/16 any) removed breaks 6, 8
+Router1: rule 2 (permit any → any any) removed             breaks 4, 5, 7
+Router1: Gi0/1 DHCP off                                    breaks 5, 6, 7
+Router1: Gi0/1 DHCP hands out DNS 9.9.9.9                  breaks 5, 7
+Router1: Gi0/2 next IP address                             breaks 5, 7
+Router1: Gi0/3 next IP address                             breaks 2, 4, 5, 6, 7, 8
+Staff-PC: not configured                                   breaks 5, 6, 7
+DNS1: next IP address                                      breaks 5, 7
+DNS1: mask /16                                             breaks 5, 7
+DNS1: no gateway                                           breaks 5, 7
+DNS1: no DNS server                                        breaks 7
+DNS1: DHCP instead of static                               breaks 5, 7
+DNS1: dns service off                                      breaks 5, 7
+DNS1: DNS record files.office removed                      breaks 7
+DNS1: DNS record shop.office removed                       breaks 5
+FS1: next IP address                                       breaks 7
+FS1: mask /16                                              breaks 7
+FS1: no gateway                                            breaks 7
+FS1: DHCP instead of static                                breaks 7
+FS1: files service off                                     breaks 7
+WebServer: next IP address                                 breaks 3, 4, 5
+WebServer: mask /16                                        breaks 5, 6, 8
+WebServer: no gateway                                      breaks 3, 4, 5, 6, 7, 8
+WebServer: DHCP instead of static                          breaks 3, 4, 5, 6, 7, 8
+WebServer: web service off                                 breaks 4, 5
+command 1 (open 10.1.99.20): removed                       breaks 1
+command 1 (open 10.1.99.20): from another device           breaks 1
+command 1 (open 10.1.99.20): another command               breaks 1
+command 2 (test 10.1.99.20:445): removed                   breaks 8
+command 2 (test 10.1.99.20:445): from another device       breaks 8
+command 2 (test 10.1.99.20:445): other address             breaks 8
+command 2 (test 10.1.99.20:445): other port                breaks 8
+command 2 (test 10.1.99.20:445): other failure reason      breaks 8
+command 2 (test 10.1.99.20:445): another command           breaks 8
+
+`;
+
+exports[`level 18 (vlans): what breaks each objective 1`] = `
+
+unplug Internet1:ISP–Router1:Gi0/0                         breaks 5
+unplug Router1:Gi0/1–Floor1-SW:P1                          breaks 2, 4, 5, 6
+unplug Router1:Gi0/2–Floor1-SW:P2                          breaks 2, 4, 5, 6
+unplug Floor1-SW:P8–Floor2-SW:P8                           breaks 4, 5, 6
+unplug Floor1-SW:P3–Sales-PC1:eth0                         breaks 2, 5
+unplug Floor1-SW:P4–HR-PC1:eth0                            breaks 2, 5, 6
+unplug Floor2-SW:P3–Sales-PC2:eth0                         breaks 4, 5, 6
+unplug Floor2-SW:P4–HR-PC2:eth0                            breaks 4, 5
+Router1: Gi0/1 DHCP off                                    breaks 2, 4, 5, 6
+Router1: Gi0/1 DHCP hands out DNS 9.9.9.9                  breaks 5
+Router1: Gi0/2 DHCP off                                    breaks 2, 4, 5, 6
+Router1: Gi0/2 DHCP hands out DNS 9.9.9.9                  breaks 5
+Floor1-SW: P1 back to VLAN 1                               breaks 2, 4, 5, 6
+Floor1-SW: P3 back to VLAN 1                               breaks 2, 5
+Floor1-SW: P2 back to VLAN 1                               breaks 2, 4, 5, 6
+Floor1-SW: P4 back to VLAN 1                               breaks 2, 5, 6
+Floor1-SW: P8 back to VLAN 1                               breaks 3, 4, 5, 6
+Floor2-SW: P3 back to VLAN 1                               breaks 4, 5, 6
+Floor2-SW: P4 back to VLAN 1                               breaks 4, 5
+Floor2-SW: P8 back to VLAN 1                               breaks 3, 4, 5, 6
+Sales-PC1: not configured                                  breaks 2, 5
+HR-PC1: not configured                                     breaks 2, 5, 6
+Sales-PC2: not configured                                  breaks 4, 5, 6
+HR-PC2: not configured                                     breaks 4, 5
+command 1 (ipconfig 10.1.10.101): removed                  breaks 1
+command 1 (ipconfig 10.1.10.101): from another device      breaks 1
+command 1 (ipconfig 10.1.10.101): another command          breaks 1
+command 2 (ping 10.1.20.100): removed                      breaks 6
+command 2 (ping 10.1.20.100): failed instead               breaks 6
+command 2 (ping 10.1.20.100): from another device          breaks 6
+command 2 (ping 10.1.20.100): other destination            breaks 6
+command 2 (ping 10.1.20.100): another command              breaks 6
+
+`;
+
+exports[`level 19 (vms): what breaks each objective 1`] = `
+
+unplug Internet1:ISP–Router1:WAN                           breaks 1
+unplug Router1:LAN1–Switch1:P1                             breaks 1, 4
+unplug Switch1:P2–Colleague-PC:eth0                        breaks 4
+unplug Switch1:P3–DevLaptop:eth0                           breaks 1, 4
+unplug DevLaptop:br1–WebVM:eth0                            breaks 1, 3, 4
+unplug DevLaptop:ho1–TestVM:eth0                           breaks 5, 7
+Router1: LAN next IP address                               breaks 1
+Router1: LAN DHCP off                                      breaks 1, 4
+Router1: LAN DHCP hands out DNS 9.9.9.9                    breaks 1
+Colleague-PC: not configured                               breaks 4
+DevLaptop: Host-only DHCP off                              breaks 5, 7
+WebVM: not configured                                      breaks 1, 4
+WebVM: web service off                                     breaks 4
+TestVM: not configured                                     breaks 5, 7
+command 1 (browse www.example.com): removed                breaks 1
+command 1 (browse www.example.com): failed instead         breaks 1
+command 1 (browse www.example.com): from another device    breaks 1
+command 1 (browse www.example.com): other host             breaks 1
+command 1 (browse www.example.com): another command        breaks 1
+command 2 (browse 10.0.2.15): removed                      breaks 2
+command 2 (browse 10.0.2.15): succeeded instead            breaks 2
+command 2 (browse 10.0.2.15): from another device          breaks 2
+command 2 (browse 10.0.2.15): other host                   breaks 2
+command 2 (browse 10.0.2.15): another command              breaks 2
+command 3 (browse 192.168.1.102): removed                  breaks 4
+command 3 (browse 192.168.1.102): failed instead           breaks 4
+command 3 (browse 192.168.1.102): from another device      breaks 4
+command 3 (browse 192.168.1.102): other host               breaks 4
+command 3 (browse 192.168.1.102): another command          breaks 4
+command 4 (ping 8.8.8.8): removed                          breaks 6
+command 4 (ping 8.8.8.8): succeeded instead                breaks 6
+command 4 (ping 8.8.8.8): from another device              breaks 6
+command 4 (ping 8.8.8.8): other failure reason             breaks 6
+command 4 (ping 8.8.8.8): another command                  breaks 6
+command 5 (ping 192.168.56.101): removed                   breaks 7
+command 5 (ping 192.168.56.101): failed instead            breaks 7
+command 5 (ping 192.168.56.101): from another device       breaks 7
+command 5 (ping 192.168.56.101): other destination         breaks 7
+command 5 (ping 192.168.56.101): another command           breaks 7
+
+`;
+
+exports[`level 2 (static): what breaks each objective 1`] = `
+
+unplug Internet1:ISP–Router1:WAN                           breaks 8
+unplug Router1:LAN1–PC1:eth0                               breaks 7, 8
+Router1: LAN next IP address                               breaks 7, 8
+PC1: next IP address                                       breaks 3
+PC1: mask /16                                              breaks 4
+PC1: no gateway                                            breaks 5, 8
+PC1: no DNS server                                         breaks 6
+PC1: DHCP instead of static                                breaks 2, 3, 4, 5, 6, 7, 8
+command 1 (ipconfig 169.254.22.206): removed               breaks 1
+command 1 (ipconfig 169.254.22.206): from another device   breaks 1
+command 1 (ipconfig 169.254.22.206): source dhcp           breaks 1
+command 1 (ipconfig 169.254.22.206): another command       breaks 1
+command 2 (ping 192.168.1.1): removed                      breaks 7
+command 2 (ping 192.168.1.1): failed instead               breaks 7
+command 2 (ping 192.168.1.1): from another device          breaks 7
+command 2 (ping 192.168.1.1): other destination            breaks 7
+command 2 (ping 192.168.1.1): another command              breaks 7
+command 3 (ping 8.8.8.8): removed                          breaks 8
+command 3 (ping 8.8.8.8): failed instead                   breaks 8
+command 3 (ping 8.8.8.8): from another device              breaks 8
+command 3 (ping 8.8.8.8): other destination                breaks 8
+command 3 (ping 8.8.8.8): another command                  breaks 8
+
+`;
+
+exports[`level 20 (ssh): what breaks each objective 1`] = `
+
+unplug Internet1:ISP–Router1:Gi0/0                         breaks 5
+unplug Router1:Gi0/1–Staff-SW:P1                           breaks 2, 5
+unplug Router1:Gi0/2–IT-SW:P1                              breaks 2, 4
+unplug Router1:Gi0/3–Servers-SW:P1                         breaks 2, 4, 5
+unplug Staff-SW:P2–Staff-PC:eth0                           breaks 2, 5
+unplug IT-SW:P2–IT-Laptop:eth0                             breaks 2, 4
+unplug Servers-SW:P2–Jump1:eth0                            breaks 2, 4
+unplug Servers-SW:P3–FS1:eth0                              breaks 4, 5
+unplug Servers-SW:P4–DNS1:eth0                             breaks 5
+Router1: rule 1 (permit any → 10.1.99.20 TCP 445) removed  breaks 5
+Router1: rule 2 (permit any → 10.1.99.53 UDP 53) removed   breaks 5
+Router1: rule 3 (permit 10.1.30.0/24 → 10.1.99.10 TCP 22) removed breaks 2, 4
+Router1: rule 4 (deny any → 10.1.99.0/24 any) removed      breaks 2
+Router1: rule 5 (permit any → any any) removed             breaks 5
+Router1: Gi0/1 DHCP off                                    breaks 2, 5
+Router1: Gi0/1 DHCP hands out DNS 9.9.9.9                  breaks 5
+Router1: Gi0/2 DHCP off                                    breaks 2, 4
+Router1: Gi0/3 next IP address                             breaks 2, 4, 5
+Staff-PC: not configured                                   breaks 2, 5
+IT-Laptop: not configured                                  breaks 2, 4
+Jump1: next IP address                                     breaks 2, 4
+Jump1: mask /16                                            breaks 2, 4
+Jump1: no gateway                                          breaks 2, 4
+Jump1: DHCP instead of static                              breaks 2, 4
+Jump1: ssh service off                                     breaks 2, 4
+FS1: next IP address                                       breaks 4, 5
+FS1: mask /16                                              breaks 5
+FS1: no gateway                                            breaks 5
+FS1: DHCP instead of static                                breaks 4, 5
+FS1: files service off                                     breaks 5
+FS1: ssh service off                                       breaks 4
+FS1: SSH allowed from anyone                               breaks 3
+DNS1: next IP address                                      breaks 5
+DNS1: mask /16                                             breaks 5
+DNS1: no gateway                                           breaks 5
+DNS1: no DNS server                                        breaks 5
+DNS1: DHCP instead of static                               breaks 5
+DNS1: dns service off                                      breaks 5
+DNS1: SSH allowed from anyone                              breaks 3
+DNS1: DNS record files.office removed                      breaks 5
+command 1 (ssh): removed                                   breaks 1
+command 1 (ssh): from another device                       breaks 1
+command 1 (ssh): to another device                         breaks 1
+command 1 (ssh): another command                           breaks 1
+command 2 (ssh): removed                                   breaks 4
+command 2 (ssh): failed instead                            breaks 4
+command 2 (ssh): from another device                       breaks 4
+command 2 (ssh): to another device                         breaks 4
+command 2 (ssh): another command                           breaks 4
+command 3 (ssh): removed                                   breaks 4
+command 3 (ssh): failed instead                            breaks 4
+command 3 (ssh): from another device                       breaks 4
+command 3 (ssh): to another device                         breaks 4
+command 3 (ssh): another command                           breaks 4
+
+`;
+
+exports[`level 3 (switch): what breaks each objective 1`] = `
+
+unplug Internet1:ISP–Router1:WAN                           breaks 6
+unplug Router1:LAN–Switch1:P1                              breaks 1, 2, 3, 4, 6
+unplug Switch1:P2–PC1:eth0                                 breaks 2, 3, 6
+unplug Switch1:P3–PC2:eth0                                 breaks 2, 3, 6
+unplug Switch1:P4–PC3:eth0                                 breaks 2, 3, 6
+unplug Switch1:P5–Server1:eth0                             breaks 4, 6
+Router1: LAN DHCP off                                      breaks 3, 6
+PC1: not configured                                        breaks 3, 6
+PC2: not configured                                        breaks 3, 6
+PC3: not configured                                        breaks 3, 6
+Server1: next IP address                                   breaks 7
+Server1: mask /16                                          breaks 5
+Server1: no gateway                                        breaks 5
+Server1: no DNS server                                     breaks 5
+Server1: DHCP instead of static                            breaks 4, 5, 7
+command 1 (ping 192.168.1.10): removed                     breaks 7
+command 1 (ping 192.168.1.10): failed instead              breaks 7
+command 1 (ping 192.168.1.10): from another device         breaks 7
+command 1 (ping 192.168.1.10): other destination           breaks 7
+command 1 (ping 192.168.1.10): another command             breaks 7
+
+`;
+
+exports[`level 4 (router): what breaks each objective 1`] = `
+
+unplug Internet1:ISP–Router1:WAN                           breaks 5
+unplug Router1:LAN1–Switch1:P1                             breaks 4, 5
+unplug Switch1:P2–PC1:eth0                                 breaks 4, 5
+unplug Switch1:P3–PC2:eth0                                 breaks 4, 5
+unplug Switch1:P4–PC3:eth0                                 breaks 4, 5
+unplug Switch1:P5–Printer1:eth0                            breaks 5
+Router1: LAN next IP address                               breaks 1
+Router1: LAN DHCP off                                      breaks 2, 3, 4, 5
+Router1: LAN DHCP hands out DNS 9.9.9.9                    breaks 3
+Router1: LAN DHCP pool ends one earlier                    breaks 2
+PC1: not configured                                        breaks 4, 5
+PC2: not configured                                        breaks 4, 5
+PC3: not configured                                        breaks 4, 5
+Printer1: next IP address                                  breaks 5
+Printer1: DHCP instead of static                           breaks 5
+command 1 (ipconfig 10.20.30.100): removed                 breaks 6
+command 1 (ipconfig 10.20.30.100): source static           breaks 6
+command 1 (ipconfig 10.20.30.100): another command         breaks 6
+
+`;
+
+exports[`level 5 (dns): what breaks each objective 1`] = `
+
+unplug Internet1:ISP–Router1:WAN                           breaks 1, 3, 4, 5, 6
+unplug Router1:LAN1–Switch1:P1                             breaks 1, 3, 4, 5, 6
+unplug Switch1:P2–PC1:eth0                                 breaks 1, 4, 5, 6
+unplug Switch1:P3–PC2:eth0                                 breaks 3
+Router1: LAN next IP address                               breaks 1, 3, 4, 5, 6
+Router1: LAN DHCP off                                      breaks 3
+Router1: LAN DHCP hands out DNS 9.9.9.9                    breaks 3
+PC1: no gateway                                            breaks 1, 4, 5, 6
+PC1: no DNS server                                         breaks 4, 5, 6
+PC2: not configured                                        breaks 3
+command 1 (ping 8.8.8.8): removed                          breaks 1
+command 1 (ping 8.8.8.8): failed instead                   breaks 1
+command 1 (ping 8.8.8.8): from another device              breaks 1
+command 1 (ping 8.8.8.8): other destination                breaks 1
+command 1 (ping 8.8.8.8): another command                  breaks 1
+command 3 (nslookup): removed                              breaks 3
+command 3 (nslookup): failed instead                       breaks 3
+command 3 (nslookup): from another device                  breaks 3
+command 3 (nslookup): another command                      breaks 3
+command 4 (browse www.example.com): removed                breaks 5
+command 4 (browse www.example.com): failed instead         breaks 5
+command 4 (browse www.example.com): from another device    breaks 5
+command 4 (browse www.example.com): another command        breaks 5
+command 5 (ping 93.184.216.34): removed                    breaks 6
+command 5 (ping 93.184.216.34): failed instead             breaks 6
+command 5 (ping 93.184.216.34): from another device        breaks 6
+command 5 (ping 93.184.216.34): other name                 breaks 6
+command 5 (ping 93.184.216.34): another command            breaks 6
+
+`;
+
+exports[`level 6 (subnets): what breaks each objective 1`] = `
+
+unplug Internet1:ISP–Router1:Gi0/0                         breaks 6
+unplug Router1:Gi0/1–Switch1:P1                            breaks 4, 6, 7
+unplug Router1:Gi0/2–Switch2:P1                            breaks 5, 6, 7
+unplug Switch1:P2–PC1:eth0                                 breaks 4, 6, 7
+unplug Switch2:P2–Laptop1:eth0                             breaks 5, 6
+unplug Switch1:P3–PC2:eth0                                 breaks 4, 6
+unplug Switch2:P3–Laptop2:eth0                             breaks 5, 6
+Router1: Gi0/1 next IP address                             breaks 1
+Router1: Gi0/1 DHCP off                                    breaks 3, 4, 6, 7
+Router1: Gi0/1 DHCP hands out DNS 9.9.9.9                  breaks 6
+Router1: Gi0/2 next IP address                             breaks 2
+Router1: Gi0/2 DHCP off                                    breaks 3, 5, 6, 7
+Router1: Gi0/2 DHCP hands out DNS 9.9.9.9                  breaks 6
+PC1: not configured                                        breaks 4, 6, 7
+Laptop1: not configured                                    breaks 5, 6
+PC2: not configured                                        breaks 4, 6
+Laptop2: not configured                                    breaks 5, 6
+command 1 (ping 192.168.20.100): removed                   breaks 7
+command 1 (ping 192.168.20.100): failed instead            breaks 7
+command 1 (ping 192.168.20.100): from another device       breaks 7
+command 1 (ping 192.168.20.100): another command           breaks 7
+
+`;
+
+exports[`level 7 (troubleshoot): what breaks each objective 1`] = `
+
+unplug Internet1:ISP–Router1:WAN                           breaks 1, 2, 3, 4, 5, 6
+unplug Router1:LAN1–Switch1:P1                             breaks 1, 2, 3, 4, 5, 6, 7
+unplug Switch1:P2–Printer:eth0                             breaks 7
+unplug Switch1:P3–Reception:eth0                           breaks 1, 7
+unplug Switch1:P4–Accounts:eth0                            breaks 2, 7
+unplug Switch1:P5–Design:eth0                              breaks 3, 7
+unplug Switch1:P6–Sales:eth0                               breaks 4, 7
+unplug Switch1:P7–Manager:eth0                             breaks 5, 7
+unplug Switch2:P1–Warehouse:eth0                           breaks 6, 7
+unplug Switch1:P8–Switch2:P2                               breaks 6, 7
+Router1: LAN next IP address                               breaks 1, 2, 3, 4, 5, 6
+Router1: LAN DHCP off                                      breaks 6, 7
+Router1: LAN DHCP hands out DNS 9.9.9.9                    breaks 6
+Printer: next IP address                                   breaks 2, 7
+Printer: DHCP instead of static                            breaks 7
+Reception: no gateway                                      breaks 1
+Reception: no DNS server                                   breaks 1
+Accounts: no gateway                                       breaks 2
+Accounts: no DNS server                                    breaks 2
+Design: no gateway                                         breaks 3
+Design: no DNS server                                      breaks 3
+Sales: no gateway                                          breaks 4
+Sales: no DNS server                                       breaks 4
+Manager: no gateway                                        breaks 5
+Manager: no DNS server                                     breaks 5
+Warehouse: not configured                                  breaks 6, 7
+
+`;
+
+exports[`level 8 (portforward): what breaks each objective 1`] = `
+
+unplug Internet1:ISP–Router1:WAN                           breaks 4, 5
+unplug Router1:LAN1–Switch1:P1                             breaks 2, 4, 5
+unplug Switch1:P2–PC1:eth0                                 breaks 2
+unplug Switch1:P3–WebServer:eth0                           breaks 2, 4, 5
+Router1: port forward 80 → 192.168.1.80 removed            breaks 3, 4, 5
+Router1: LAN next IP address                               breaks 4, 5
+Router1: LAN DHCP off                                      breaks 2
+PC1: not configured                                        breaks 2
+WebServer: next IP address                                 breaks 2, 4, 5
+WebServer: no gateway                                      breaks 4, 5
+WebServer: DHCP instead of static                          breaks 2, 4, 5
+WebServer: web service off                                 breaks 1, 2, 4, 5
+command 1 (browse 192.168.1.80): removed                   breaks 2
+command 1 (browse 192.168.1.80): failed instead            breaks 2
+command 1 (browse 192.168.1.80): from another device       breaks 2
+command 1 (browse 192.168.1.80): other host                breaks 2
+command 1 (browse 192.168.1.80): another command           breaks 2
+command 2 (external): removed                              breaks 5
+command 2 (external): failed instead                       breaks 5
+command 2 (external): another command                      breaks 5
+
+`;
+
+exports[`level 9 (subnet-basics): what breaks each objective 1`] = `
+
+command 1 (sx): removed                                    breaks 2
+command 1 (sx): other subnet layout                        breaks 2
+command 1 (sx): another command                            breaks 2
+command 3 (sx): removed                                    breaks 4
+command 3 (sx): other subnet layout                        breaks 4
+command 3 (sx): another command                            breaks 4
+command 4 (sx): removed                                    breaks 5
+command 4 (sx): other subnet layout                        breaks 5
+command 4 (sx): another command                            breaks 5
+command 5 (sx): removed                                    breaks 6, 7
+command 5 (sx): other subnet layout                        breaks 6, 7
+command 5 (sx): another command                            breaks 6, 7
+command 6 (sx): removed                                    breaks 7
+command 6 (sx): another command                            breaks 7
+
+`;

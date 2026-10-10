@@ -59,7 +59,8 @@
       { text: 'In the PC’s terminal, run <code>ipconfig</code> to see what DHCP gave you',
         check: c => H.ev(c, e => e.type === 'ipconfig' && e.source === 'dhcp') },
       { text: 'Test your Internet connection: <code>ping 8.8.8.8</code>',
-        check: c => H.ev(c, e => e.type === 'ping' && e.ok && e.dst === IP.parse('8.8.8.8')) },
+        check: c => H.ev(c, e => e.type === 'ping' && e.ok && e.dst === IP.parse('8.8.8.8')),
+        verify: c => H.devs(c, 'pc').some(pc => NG.Sim.transact(c.T, pc.id, P('8.8.8.8')).ok) },
     ],
     hints: [
       'Drag the PC to the right-hand side of the router so the cable is easy to draw.',
@@ -67,6 +68,11 @@
       'Click the PC with the <b>Select</b> tool. Under <b>IPv4 settings</b>, choose “Obtain an IP address automatically (DHCP)” and press <b>Apply settings</b>.',
       'Click in the terminal at the bottom and type <code>ipconfig</code>, then <code>ping 8.8.8.8</code>.',
     ],
+    solution: `<ol>
+      <li>Drag a <b>PC</b> onto the workspace, to the right of the router.</li>
+      <li>Choose <b>Ethernet cable</b>, click the PC, click the router and pick <b>LAN1</b>.</li>
+      <li>Click the PC, choose <b>Obtain an IP address automatically (DHCP)</b> and press <b>Apply settings</b>.</li>
+      <li>In the terminal: <code>ipconfig</code>, then <code>ping 8.8.8.8</code>.</li></ol>`,
     learned: `
       <ul>
         <li>Your devices plug into the router’s <b>LAN</b> ports. The <b>WAN</b> port connects to your Internet provider.</li>
@@ -127,9 +133,11 @@
       { text: 'DNS server: <code>8.8.8.8</code>',
         check: c => isStatic(c) && (IP.parseList(pc1(c).config.dns) || []).includes(P('8.8.8.8')) },
       { text: 'Check the local network: <code>ping</code> the gateway',
-        check: c => H.ev(c, e => e.type === 'ping' && e.ok && e.dev === pc1(c).id && e.dst === P('192.168.1.1')) },
+        check: c => H.ev(c, e => e.type === 'ping' && e.ok && e.dev === pc1(c).id && e.dst === P('192.168.1.1')),
+        verify: c => tx(c, 'pc1', P('192.168.1.1')).ok },
       { text: 'Check the Internet: <code>ping 8.8.8.8</code>',
-        check: c => H.ev(c, e => e.type === 'ping' && e.ok && e.dev === pc1(c).id && e.dst === P('8.8.8.8')) },
+        check: c => H.ev(c, e => e.type === 'ping' && e.ok && e.dev === pc1(c).id && e.dst === P('8.8.8.8')),
+        verify: c => tx(c, 'pc1', P('8.8.8.8')).ok },
     ],
     hints: [
       'Click PC1, then type <code>ipconfig</code> in the terminal. The 169.254 address shows DHCP failed.',
@@ -137,6 +145,10 @@
       'Click PC1, choose <b>Use the following IP address (static)</b>, fill in all four boxes and press <b>Apply settings</b>.',
       'Use the quick-test buttons: <b>ping gateway</b> first, then <b>ping 8.8.8.8</b>.',
     ],
+    solution: `<ol>
+      <li>On PC1, run <code>ipconfig</code> to see the <code>169.254.x.x</code> address.</li>
+      <li>Set PC1 to <b>static</b>: IP <code>192.168.1.50</code>, mask <code>255.255.255.0</code>, gateway <code>192.168.1.1</code>, DNS <code>8.8.8.8</code>. Apply.</li>
+      <li><code>ping 192.168.1.1</code>, then <code>ping 8.8.8.8</code>.</li></ol>`,
     learned: `
       <ul>
         <li>A <code>169.254.x.x</code> address means the computer wanted DHCP but no DHCP server answered.</li>
@@ -219,6 +231,11 @@
       'Click the router to see the DHCP pool (<code>.100</code>–<code>.199</code>). For the server, pick something outside it, such as <code>192.168.1.10</code>.',
       'Server settings: mask <code>255.255.255.0</code>, gateway <code>192.168.1.1</code> (the router), DNS <code>8.8.8.8</code>. Then click a PC and type <code>ping 192.168.1.10</code>.',
     ],
+    solution: `<ol>
+      <li>Cable a switch to the router’s <b>LAN</b> port.</li>
+      <li>Cable three PCs to the switch. They use DHCP already, so they get addresses straight away.</li>
+      <li>Cable the server to the switch and set it to static: <code>192.168.1.10</code> / <code>255.255.255.0</code>, gateway <code>192.168.1.1</code>, DNS <code>8.8.8.8</code>.</li>
+      <li>From any PC: <code>ping 192.168.1.10</code>.</li></ol>`,
     learned: `
       <ul>
         <li>A <b>switch</b> lets many devices share one network. Everything on it is on the same local network as the router’s LAN.</li>
@@ -300,6 +317,11 @@
       'The DHCP pool must be inside the router’s network. Change the pool to <code>10.20.30.100</code> – <code>10.20.30.150</code> and the DNS server to <code>1.1.1.1</code>.',
       'Once the PCs have <code>10.20.30.x</code> addresses, run <code>ipconfig</code> on one and <code>ping 10.20.30.10</code> to reach the printer.',
     ],
+    solution: `<ol>
+      <li>Click the router. Set the LAN to <code>10.20.30.1</code> / <code>255.255.255.0</code>.</li>
+      <li>In the same form, set the DHCP pool to <code>10.20.30.100</code> – <code>10.20.30.150</code> and DNS to <code>1.1.1.1</code>.</li>
+      <li>Press <b>Save router settings</b> once, then run <code>ipconfig</code> on a PC.</li></ol>
+      <p class="small">Changing everything before saving is quickest: saving the LAN address alone briefly breaks DHCP, because the old pool is no longer inside the network.</p>`,
     learned: `
       <ul>
         <li>The router’s <b>LAN address</b> is the default gateway for the whole network, and decides which network the LAN uses.</li>
@@ -353,17 +375,21 @@
       </ul>`,
     objectives: [
       { text: 'On PC1, <code>ping 8.8.8.8</code>: is the Internet connection really broken?',
-        check: c => H.ev(c, e => e.type === 'ping' && e.ok && e.dev === tagged(c, 'pc1').id && e.dst === P('8.8.8.8')) },
+        check: c => H.ev(c, e => e.type === 'ping' && e.ok && e.dev === tagged(c, 'pc1').id && e.dst === P('8.8.8.8')),
+        verify: c => tx(c, 'pc1', P('8.8.8.8')).ok },
       { text: 'On PC1, try <code>browse www.example.com</code> and read why it fails',
         check: c => H.ev(c, e => e.type === 'browse' && e.dev === tagged(c, 'pc1').id) },
       { text: 'On PC2 (which works), run <code>nslookup www.example.com</code>',
-        check: c => H.ev(c, e => e.type === 'nslookup' && e.ok && e.dev === tagged(c, 'pc2').id) },
+        check: c => H.ev(c, e => e.type === 'nslookup' && e.ok && e.dev === tagged(c, 'pc2').id),
+        verify: c => NG.Sim.resolve(c.T, tagged(c, 'pc2').id, 'www.example.com').ok },
       { text: 'Fix PC1’s <b>DNS server</b> setting',
         check: c => NG.Sim.resolve(c.T, tagged(c, 'pc1').id, 'www.example.com').ok },
       { text: 'On PC1, <code>browse www.example.com</code> successfully',
-        check: c => H.ev(c, e => e.type === 'browse' && e.ok && e.dev === tagged(c, 'pc1').id) },
+        check: c => H.ev(c, e => e.type === 'browse' && e.ok && e.dev === tagged(c, 'pc1').id),
+        verify: c => canBrowse(c, tagged(c, 'pc1')) },
       { text: 'On PC1, <code>ping www.example.com</code> by name',
-        check: c => H.ev(c, e => e.type === 'ping' && e.ok && e.dev === tagged(c, 'pc1').id && e.name === 'www.example.com') },
+        check: c => H.ev(c, e => e.type === 'ping' && e.ok && e.dev === tagged(c, 'pc1').id && e.name === 'www.example.com'),
+        verify: c => { const r = NG.Sim.resolve(c.T, tagged(c, 'pc1').id, 'www.example.com'); return r.ok && tx(c, 'pc1', r.ip).ok; } },
     ],
     hints: [
       'Click PC1 and type <code>ping 8.8.8.8</code>. Replies mean the network path to the Internet works fine.',
@@ -371,6 +397,11 @@
       'Click PC2 and run <code>ipconfig</code>, then <code>nslookup www.example.com</code>. Which DNS server does PC2 use?',
       'Click PC1 and change its DNS server to <code>8.8.8.8</code> (or the router, <code>192.168.1.1</code>). Then press <b>Apply settings</b>.',
     ],
+    solution: `<ol>
+      <li>PC1: <code>ping 8.8.8.8</code> works, so the network is fine. <code>browse www.example.com</code> fails.</li>
+      <li>PC2: <code>nslookup www.example.com</code> works.</li>
+      <li>Set PC1’s DNS server to <code>8.8.8.8</code> (or the router, <code>192.168.1.1</code>) and apply.</li>
+      <li>PC1: <code>browse www.example.com</code> and <code>ping www.example.com</code>.</li></ol>`,
     learned: `
       <ul>
         <li><b>DNS</b> turns names like <i>www.example.com</i> into IP addresses. Without it, you can only reach things by number.</li>
@@ -429,7 +460,8 @@
       { text: 'Everyone can <code>browse www.example.com</code>',
         check: c => { const all = [...H.devs(c, 'pc'), ...H.devs(c, 'laptop')]; return all.length >= 4 && all.every(d => canBrowse(c, d)); } },
       { text: 'From a staff PC, <code>ping</code> a guest laptop: the router routes between the networks',
-        check: c => H.ev(c, e => e.type === 'ping' && e.ok && e.dst != null && IP.same(e.dst, GUEST, M24) && H.devs(c, 'pc').some(d => d.id === e.dev && inNet(c, d, STAFF))) },
+        check: c => H.ev(c, e => e.type === 'ping' && e.ok && e.dst != null && IP.same(e.dst, GUEST, M24) && H.devs(c, 'pc').some(d => d.id === e.dev && inNet(c, d, STAFF))),
+        verify: c => H.devs(c, 'pc').filter(d => inNet(c, d, STAFF)).some(pc => H.devs(c, 'laptop').filter(d => inNet(c, d, GUEST)).some(l => NG.Sim.transact(c.T, pc.id, H.ifc(c, l).ip).ok)) },
     ],
     hints: [
       'Click the router. It has a settings section for each interface: Gi0/1, Gi0/2 and Gi0/3 (unused).',
@@ -437,6 +469,11 @@
       'Cable one switch to <b>Gi0/1</b> and the other to <b>Gi0/2</b>. Then plug the PCs into the staff switch and the laptops into the guest switch.',
       'Run <code>ipconfig</code> on a laptop to find its address, then ping that address from a staff PC.',
     ],
+    solution: `<ol>
+      <li>Router <b>Gi0/1</b>: <code>192.168.10.1</code> / <code>255.255.255.0</code>, DHCP on, pool <code>.100</code>–<code>.199</code>, DNS <code>8.8.8.8</code>.</li>
+      <li>Router <b>Gi0/2</b>: <code>192.168.20.1</code> / <code>255.255.255.0</code>, DHCP on, pool <code>.100</code>–<code>.199</code>, DNS <code>8.8.8.8</code>. Save.</li>
+      <li>One switch on Gi0/1 with the two PCs, one switch on Gi0/2 with the two laptops.</li>
+      <li>From a PC, <code>ping 192.168.20.100</code> (a laptop).</li></ol>`,
     learned: `
       <ul>
         <li>A <b>router</b> connects separate networks: each interface has an address in a different network.</li>
@@ -501,6 +538,17 @@
       'Design: look at its subnet mask. Manager: compare its address with the office network. Sales: <code>ping 8.8.8.8</code> works, so what about DNS?',
       'Warehouse: Switch2 isn’t connected to anything. Cable it to the free port on Switch1. (Or switch a static device to DHCP. That fixes things too!)',
     ],
+    solution: `<p>Six faults, one per person:</p><ul>
+      <li><b>Reception</b>: gateway <code>192.168.1.254</code> → <code>192.168.1.1</code>.</li>
+      <li><b>Accounts</b>: <code>192.168.1.20</code> is the printer’s address → use a free one outside the pool, e.g. <code>192.168.1.21</code>.</li>
+      <li><b>Design</b>: mask <code>255.255.255.252</code> → <code>255.255.255.0</code>.</li>
+      <li><b>Sales</b>: DNS <code>192.168.1.53</code> → <code>8.8.8.8</code>.</li>
+      <li><b>Manager</b>: <code>192.168.2.45</code> is in the wrong network → <code>192.168.1.45</code>.</li>
+      <li><b>Warehouse</b>: cable Switch2 to a free port on Switch1.</li></ul>
+      <p class="small">Most efficient in practice: set the five PCs to <b>DHCP</b>. The router hands out correct settings, which fixes all five in one click each.</p>`,
+    review: c => [...USERS7.map(u => tagged(c, u.tag)), tagged(c, 'warehouse')]
+      .filter(d => d.config.mode === 'static' && P(d.config.ip) >= POOL[0] && P(d.config.ip) <= POOL[1])
+      .map(d => `${d.name} has the static address <code>${d.config.ip}</code>, inside the DHCP pool (<code>.100</code>–<code>.199</code>). DHCP could hand the same address to another device one day. Use an address outside the pool, or set it to DHCP.`),
     learned: `
       <ul>
         <li>Troubleshoot <b>layer by layer</b>: cable, then address, then local network (gateway), then Internet, then names (DNS).</li>
@@ -555,13 +603,15 @@
       { text: 'Turn on the <b>web server</b> service on WebServer',
         check: c => !!web8(c).config.services.web },
       { text: 'From PC1, <code>browse 192.168.1.80</code> to test the site inside the office',
-        check: c => H.ev(c, e => e.type === 'browse' && e.ok && e.dev === tagged(c, 'pc1').id && e.host === '192.168.1.80') },
+        check: c => H.ev(c, e => e.type === 'browse' && e.ok && e.dev === tagged(c, 'pc1').id && e.host === '192.168.1.80'),
+        verify: c => NG.Sim.browse(c.T, tagged(c, 'pc1').id, '192.168.1.80').ok },
       { text: 'On the router, forward <b>TCP port 80</b> to <code>192.168.1.80</code>',
         check: c => router8(c).config.portForwards.some(r => r.proto === 'tcp' && Number(r.port) === 80 && P(r.ip) === WEB8 && Number(r.toPort || r.port) === 80) },
       { text: 'Customers on the Internet can reach your website',
         check: c => NG.Sim.externalVisit(c.T).ok },
       { text: 'Prove it: Internet cloud → <b>Visit from the Internet</b>',
-        check: c => H.ev(c, e => e.type === 'external' && e.ok) },
+        check: c => H.ev(c, e => e.type === 'external' && e.ok),
+        verify: c => NG.Sim.externalVisit(c.T).ok },
     ],
     hints: [
       'Click WebServer, tick <b>Web server</b> under Services and press <b>Apply settings</b>. Then test from PC1 with <code>browse 192.168.1.80</code>.',
@@ -569,6 +619,12 @@
       'Still failing from outside? Read the event log: the request arrives, but the <b>reply</b> can’t get back. Look at WebServer’s settings.',
       'WebServer has no default gateway. Set it to the router: <code>192.168.1.1</code>.',
     ],
+    solution: `<ol>
+      <li>WebServer: tick <b>Web server</b>, set its gateway to <code>192.168.1.1</code>, apply.</li>
+      <li>From PC1: <code>browse 192.168.1.80</code>.</li>
+      <li>Router: add a port forward TCP <code>80</code> → <code>192.168.1.80</code> port <code>80</code>.</li>
+      <li>Internet cloud → <b>Visit from the Internet</b>.</li></ol>`,
+    review: c => router8(c).config.portForwards.length > 1 ? ['You have more than one port-forwarding rule. Only TCP 80 → <code>192.168.1.80</code> is needed: every extra open port is another way in.'] : [],
     learned: `
       <ul>
         <li><b>NAT</b> lets many private devices share one public address, but it blocks <i>new</i> connections coming in from the Internet.</li>
@@ -637,7 +693,7 @@
       { text: 'Use <b>Split evenly into</b> to make four /26 subnets',
         check: c => sxEv(c, e => sizes(e) === '26,26,26,26') },
       { text: 'Click the /26 that contains the address <code>.130</code>: its range is <code>.128</code>–<code>.191</code>',
-        check: c => sxEv(c, e => { const b = e.blocks[e.sel]; return b.p === 26 && (b.net & 255) === 128; }) },
+        check: c => sxEv(c, e => { const b = e.blocks[e.sel]; return !!b && b.p === 26 && (b.net & 255) === 128; }) },
       { text: 'Make a <b>mixed</b> plan: one /25, one /26 and two /27s (split, then merge where needed)',
         check: c => sxEv(c, e => sizes(e) === '25,26,27,27') },
       { text: 'Split one block all the way down to a /30: just <b>2</b> usable addresses',
@@ -655,6 +711,13 @@
       'For the mixed plan: split the /24 into two /25s. Leave the first alone. Split the second into two /26s, then split the last /26 into two /27s.',
       'Watch the binary table: every split moves one more bit into the yellow subnet part, and the blue host part shrinks.',
     ],
+    solution: `<ol>
+      <li>Open the Subnet helper and press <b>Split</b> on the /24.</li>
+      <li><b>Split evenly into</b> → /26.</li>
+      <li>Click the block <code>.128/26</code>.</li>
+      <li>Choose /25 from <b>Split evenly into</b>, then split the second /25, then split the last /26: one /25, one /26, two /27s.</li>
+      <li>Keep splitting one /27 until you reach a /30.</li>
+      <li>Choose /24 from <b>Split evenly into</b> (or merge back step by step).</li></ol>`,
     learned: `
       <ul>
         <li>The <b>prefix</b> (e.g. /26) is the number of network bits. The rest are host bits.</li>
@@ -674,7 +737,7 @@
       return !!i && i.ip != null && IP.prefix(i.mask) >= 24 && IP.same(i.ip, BLOCK, M24) && IP.usable(i.mask) >= dep.need + 1;
     };
     return {
-      id: o.id, title: o.title, subtitle: o.subtitle, palette: {}, explorer: o.block,
+      id: o.id, title: o.title, subtitle: o.subtitle, palette: {}, explorer: o.block, depts: o.depts,
       setup(net, M) {
         const inet = M.add(net, 'internet', 90, 300, { locked: true });
         const r = M.add(net, 'officerouter', 280, 300, { locked: true });
@@ -708,6 +771,8 @@
           check: c => o.depts.every(dep => canBrowse(c, tagged(c, dep.tag))) },
       ],
       hints: o.hints,
+      solution: o.solution,
+      review: o.review,
       learned: o.learned,
     };
   }
@@ -747,6 +812,11 @@
       'Turn on DHCP for both, with pools of at least 100 addresses inside each half, and DNS <code>8.8.8.8</code>.',
       'If a pool is rejected, click the router: it says why (for example “the pool is not inside the interface’s network”).',
     ],
+    solution: `<ol>
+      <li><b>Gi0/1</b> (Office): <code>192.168.50.1</code> / <code>255.255.255.128</code>, DHCP pool <code>.10</code>–<code>.120</code>, DNS <code>8.8.8.8</code>.</li>
+      <li><b>Gi0/2</b> (Lab): <code>192.168.50.129</code> / <code>255.255.255.128</code>, DHCP pool <code>.138</code>–<code>.248</code>, DNS <code>8.8.8.8</code>.</li>
+      <li>Save. Both PCs get addresses in their own half.</li></ol>`,
+    review: c => subnetReview(c, 'subnet-halves'),
     learned: `
       <ul>
         <li>Borrowing <b>one</b> host bit splits a block into <b>two</b> equal halves: a /24 becomes two /25s.</li>
@@ -797,6 +867,12 @@
       'Router addresses: <code>172.16.5.1</code> mask <code>255.255.255.192</code>, <code>172.16.5.65</code> mask <code>255.255.255.224</code>, <code>172.16.5.97</code> mask <code>255.255.255.240</code>.',
       'Pools inside each subnet, e.g. Sales <code>.2</code>–<code>.62</code>, Engineering <code>.66</code>–<code>.94</code>, Management <code>.98</code>–<code>.110</code>, each with DNS <code>8.8.8.8</code>.',
     ],
+    solution: `<ol>
+      <li><b>Gi0/1</b> (Sales, 50): <code>172.16.5.1</code> / <code>255.255.255.192</code> (/26), pool <code>.2</code>–<code>.62</code>.</li>
+      <li><b>Gi0/2</b> (Engineering, 25): <code>172.16.5.65</code> / <code>255.255.255.224</code> (/27), pool <code>.66</code>–<code>.94</code>.</li>
+      <li><b>Gi0/3</b> (Management, 10): <code>172.16.5.97</code> / <code>255.255.255.240</code> (/28), pool <code>.98</code>–<code>.110</code>.</li>
+      <li>DNS <code>8.8.8.8</code> on all three. This uses <code>.0</code>–<code>.111</code> and leaves <code>.112</code>–<code>.255</code> free in one piece.</li></ol>`,
+    review: c => subnetReview(c, 'subnetting'),
     learned: `
       <ul>
         <li>Size each subnet as devices + router + 2, rounded up to a power of two. That gives its prefix.</li>
@@ -914,7 +990,8 @@
       { text: 'Both departments can open the shared drive',
         check: c => allCan(c, d => NG.Sim.openShare(c.T, d.id, '\\\\files.office')) },
       { text: 'Prove it: <code>open \\\\files.office</code> from Sales-PC <b>and</b> HR-PC',
-        check: c => fromEach(c, e => e.type === 'open' && e.ok && e.host === 'files.office') },
+        check: c => fromEach(c, e => e.type === 'open' && e.ok && e.host === 'files.office'),
+        verify: c => allCan(c, d => NG.Sim.openShare(c.T, d.id, '\\\\files.office')) },
     ],
     hints: [
       'Click the router. Under <b>Settings: Gi0/3</b> enter <code>10.1.99.1</code> and <code>255.255.255.0</code>, leave DHCP off, and save. Then try <code>browse www.example.com</code> on a PC.',
@@ -922,6 +999,11 @@
       'On the server, tick <b>File sharing</b> under Services and press <b>Apply settings</b>. You can already test it by address: <code>open \\\\10.1.99.20</code>.',
       'Click DNS1. Under <b>DNS records</b> add <code>files.office</code> → <code>10.1.99.20</code>. Then run <code>open \\\\files.office</code> on Sales-PC and on HR-PC.',
     ],
+    solution: `<ol>
+      <li>Router <b>Gi0/3</b>: <code>10.1.99.1</code> / <code>255.255.255.0</code>, DHCP off. Save.</li>
+      <li>Add a server, cable it to Servers-SW. Static: <code>10.1.99.20</code> / <code>255.255.255.0</code>, gateway <code>10.1.99.1</code>, DNS <code>10.1.99.53</code>. Tick <b>File sharing</b>. Apply.</li>
+      <li>DNS1: add the record <code>files.office</code> → <code>10.1.99.20</code>.</li>
+      <li><code>open \\\\files.office</code> on Sales-PC and on HR-PC.</li></ol>`,
     learned: `
       <ul>
         <li>Servers often live on their <b>own network</b>. The router connects every department to it.</li>
@@ -972,7 +1054,8 @@
       </ul>`,
     objectives: [
       { text: 'From a PC, <code>browse intranet.office</code>: the intranet works',
-        check: c => H.ev(c, e => e.type === 'browse' && e.ok && e.host === 'intranet.office') },
+        check: c => H.ev(c, e => e.type === 'browse' && e.ok && e.host === 'intranet.office'),
+        verify: c => allCan(c, d => NG.Sim.browse(c.T, d.id, 'intranet.office')) },
       { text: 'From a PC, try <code>open \\\\files.office</code> and read why it fails',
         check: c => H.ev(c, e => e.type === 'open' && e.host === 'files.office') },
       { text: 'Knock on both doors: <code>test files.office 80</code> and <code>test files.office 445</code>',
@@ -982,7 +1065,8 @@
       { text: 'Start the <b>File sharing</b> service on FS1',
         check: c => !!fs13(c).config.services.files },
       { text: 'Give FS1 a third name: on DNS1 add <code>wiki.office</code> → <code>10.1.99.20</code>, then <code>browse wiki.office</code>',
-        check: c => H.ev(c, e => e.type === 'browse' && e.ok && e.host === 'wiki.office') },
+        check: c => H.ev(c, e => e.type === 'browse' && e.ok && e.host === 'wiki.office'),
+        verify: c => allCan(c, d => NG.Sim.browse(c.T, d.id, 'wiki.office')) },
       { text: 'Both departments can reach the shared drive <b>and</b> the intranet',
         check: c => allCan(c, d => NG.Sim.openShare(c.T, d.id, '\\\\files.office')) && allCan(c, d => NG.Sim.browse(c.T, d.id, 'intranet.office')) },
     ],
@@ -992,6 +1076,11 @@
       'Click FS1 and type <code>netstat</code> (or press the <b>netstat</b> button). Only port 80 is listed. Tick <b>File sharing</b> and press <b>Apply settings</b>.',
       'Click DNS1 and add <code>wiki.office</code> → <code>10.1.99.20</code>. Then <code>browse wiki.office</code> from a PC: a new name, the same server and the same port 80.',
     ],
+    solution: `<ol>
+      <li>Sales-PC: <code>browse intranet.office</code> (works), <code>open \\\\files.office</code> (refused).</li>
+      <li>Sales-PC: <code>test files.office 80</code> (OPEN) and <code>test files.office 445</code> (CLOSED).</li>
+      <li>FS1: <code>netstat</code>, then tick <b>File sharing</b> and apply.</li>
+      <li>DNS1: add <code>wiki.office</code> → <code>10.1.99.20</code>. Then <code>browse wiki.office</code>.</li></ol>`,
     learned: `
       <ul>
         <li>The <b>IP address</b> finds the device. The <b>port</b> finds the service on that device.</li>
@@ -1063,7 +1152,8 @@
       { text: 'Both departments can still browse <code>www.example.com</code>',
         check: c => staff(c).every(d => canBrowse(c, d)) },
       { text: 'From Sales-PC, <code>test hr.office 445</code> now says <b>FILTERED</b>',
-        check: c => H.ev(c, e => e.type === 'test' && e.dev === tagged(c, 'sales').id && e.ip === HRFS_IP && e.port === 445 && e.code === 'acl') },
+        check: c => H.ev(c, e => e.type === 'test' && e.dev === tagged(c, 'sales').id && e.ip === HRFS_IP && e.port === 445 && e.code === 'acl'),
+        verify: c => blocked(share(c, 'sales', 'hr.office')) },
     ],
     hints: [
       'Click Sales-PC and run <code>open \\\\hr.office</code>. Then click the router and find <b>Access rules</b>.',
@@ -1071,6 +1161,13 @@
       'Did names, the Internet and the shared drive stop working? Everything not permitted hits the built-in “deny everything else”, including DNS. Add rule 3: <b>permit</b> <code>any</code> → <code>any</code>, any protocol.',
       'Prefer an allowlist? That works too: keep the HR permit and add permits for DNS (UDP 53), the shared drive and intranet (TCP 445 and 80 to <code>10.1.99.20</code>) and the web (TCP 80). The status lights will turn amber, because they use <code>ping</code>, which your list doesn’t allow.',
     ],
+    solution: `<p><b>Shortest list</b> (block what’s bad), 3 rules:</p><ol>
+      <li><b>permit</b> <code>10.1.20.0/24</code> → <code>10.1.99.30</code> TCP <code>445</code></li>
+      <li><b>deny</b> <code>any</code> → <code>10.1.99.30</code> any protocol</li>
+      <li><b>permit</b> <code>any</code> → <code>any</code> any protocol</li></ol>
+      <p><b>Allowlist</b> (allow only what’s needed) also passes: permit DNS (UDP 53 to <code>10.1.99.53</code>), HR → HR-FS TCP 445, everyone → FS1 TCP 445 and 80, and web traffic (TCP 80). It is stricter, but longer, and blocks <code>ping</code>.</p>
+      <p>Then from Sales-PC: <code>test hr.office 445</code> → FILTERED.</p>`,
+    review: c => aclReview(c, 3),
     learned: `
       <ul>
         <li><b>Access rules</b> (a firewall) decide which connections may pass, by source, destination, protocol and port.</li>
@@ -1139,6 +1236,16 @@
       'Still no <code>www.example.com</code>? No rule permits Internet traffic, so it falls through to “deny everything else” (DNS1 can’t ask 8.8.8.8 either). Add <b>permit</b> <code>any</code> → <code>any</code> at the very bottom.',
       'Sales can open <code>\\\\hr.office</code> because rule 1’s source <code>10.1.0.0/16</code> covers every <code>10.1.x.x</code> network. Remove it and add <b>permit</b> <code>10.1.20.0/24</code> → <code>10.1.99.30</code> TCP <code>445</code>, then move it to the top.',
     ],
+    solution: `<p>The shortest list that meets the policy has 7 rules:</p><ol>
+      <li><b>permit</b> <code>10.1.20.0/24</code> → <code>10.1.99.30</code> TCP <code>445</code> <small>(was <code>10.1.0.0/16</code>: too wide)</small></li>
+      <li><b>permit</b> <code>any</code> → <code>10.1.99.20</code> TCP <code>80</code></li>
+      <li><b>permit</b> <code>any</code> → <code>10.1.99.20</code> TCP <code>445</code> <small>(was missing: wrong port)</small></li>
+      <li><b>permit</b> <code>any</code> → <code>10.1.99.53</code> UDP <code>53</code></li>
+      <li><b>deny</b> <code>10.1.10.0/24</code> → <code>10.1.20.0/24</code> any protocol</li>
+      <li><b>deny</b> <code>any</code> → <code>10.1.99.0/24</code> any protocol <small>(was rule 3: too high)</small></li>
+      <li><b>permit</b> <code>any</code> → <code>any</code> any protocol <small>(was missing)</small></li></ol>
+      <p class="small">The old “deny any → 10.1.99.30” isn’t needed: rule 6 already blocks everyone except HR from HR-FS.</p>`,
+    review: c => aclReview(c, 7),
     learned: `
       <ul>
         <li>A rule that is <b>too broad</b> and too high (deny the whole Servers network) hides the permits below it.</li>
@@ -1158,6 +1265,37 @@
   const devIp = (c, tag) => { const d = tagged(c, tag); return d ? H.ifc(c, d).ip : null; };
   const tx = (c, from, ip, proto, port) => (ip == null ? { ok: false } : NG.Sim.transact(c.T, tagged(c, from).id, ip, proto, port));
   const officeRouter = c => c.net.devices.find(d => d.type === 'officerouter');
+
+  // ---------- Solution reviews ----------
+  // Things that pass, but could be better. Each returns a list of suggestions (HTML).
+  function aclReview(c, best) {
+    const r = officeRouter(c);
+    if (!r) return [];
+    const rules = r.config.acl, out = [];
+    NG.Sim.aclLint(rules).forEach(x => out.push(`Rule ${x.index + 1} (<code>${NG.Sim.ruleText(rules[x.index])}</code>) can never match: rule ${x.by + 1} above it already catches everything it would. You can delete it.`));
+    if (best && rules.length > best) out.push(`Your list has ${rules.length} rules. It can be done with ${best}: compare with the model solution.`);
+    return out;
+  }
+
+  // Levels 10 and 11: subnets bigger than needed, routers not on the first address, and wasted gaps.
+  function subnetReview(c, id) {
+    const L = Levels.find(x => x.id === id), out = [];
+    const depts = L.depts || [];
+    let end = 0, best = 0;
+    depts.forEach(dep => {
+      const i = routerIf(c, dep.iface);
+      if (!i || i.ip == null) return;
+      const p = IP.prefix(i.mask), size = s => Math.pow(2, 32 - s);
+      let fit = 30;
+      while (size(fit) - 2 < dep.need + 1) fit--;
+      best += size(fit);
+      if (p < fit) out.push(`<b>${dep.name}</b> uses a /${p} (${size(p) - 2} usable) for ${dep.need} devices. A /${fit} (${size(fit) - 2} usable) is enough and leaves more room for future networks.`);
+      if (i.ip !== IP.net(i.ip, i.mask) + 1) out.push(`<b>${dep.name}</b>’s router is <code>${IP.str(i.ip)}</code>. By convention the router takes the <b>first</b> usable address (<code>${IP.str(IP.net(i.ip, i.mask) + 1)}</code>), so anyone can guess the gateway.`);
+      end = Math.max(end, (IP.bcast(i.ip, i.mask) & 255) + 1);
+    });
+    if (best && end > best) out.push(`Your subnets reach up to <code>.${end - 1}</code>. Placed largest first and packed together they fit in <code>.0</code>–<code>.${best - 1}</code>, leaving the rest free in one block.`);
+    return out;
+  }
 
   // ---------- Level 16: guest isolation ----------
   Levels.push({
@@ -1228,6 +1366,10 @@
       'Now guests can’t browse at all. <code>browse www.example.com</code> on Guest-Laptop: the Why? line shows their DNS server, 10.1.99.53, is inside and blocked.',
       'In the router’s <b>Gi0/2</b> settings, change the DHCP <b>DNS server</b> to <code>8.8.8.8</code> and save. Guests get a public DNS server, which also knows nothing about <code>files.office</code>.',
     ],
+    solution: `<ol>
+      <li>Router access rules: <b>deny</b> <code>10.1.50.0/24</code> → <code>10.0.0.0/8</code> any protocol, then <b>permit</b> <code>any</code> → <code>any</code>.</li>
+      <li>Router <b>Gi0/2</b>: change the DHCP DNS server to <code>8.8.8.8</code> and save.</li></ol>`,
+    review: c => aclReview(c, 2),
     learned: `
       <ul>
         <li>A guest network should reach the <b>Internet only</b>: deny guests → every inside network, then permit the rest.</li>
@@ -1310,7 +1452,8 @@
       { text: 'Everyone can still reach the Internet, and staff can still open <code>\\\\files.office</code>',
         check: c => canBrowse(c, tagged(c, 'staff')) && tx(c, 'web', P('8.8.8.8')).ok && NG.Sim.openShare(c.T, tagged(c, 'staff').id, '\\\\files.office').ok },
       { text: 'Prove it: from WebServer, <code>test 10.1.99.20 445</code> is now <b>FILTERED</b>',
-        check: c => H.ev(c, e => e.type === 'test' && e.dev === web17(c).id && e.ip === P('10.1.99.20') && e.port === 445 && e.code === 'acl') },
+        check: c => H.ev(c, e => e.type === 'test' && e.dev === web17(c).id && e.ip === P('10.1.99.20') && e.port === 445 && e.code === 'acl'),
+        verify: c => blocked(tx(c, 'web', P('10.1.99.20'), 'tcp', 445)) },
     ],
     hints: [
       'Click WebServer and run <code>open \\\\10.1.99.20</code>. Then click the router and give <b>Gi0/3</b> the address <code>10.1.200.1</code> / <code>255.255.255.0</code> (no DHCP: servers are static).',
@@ -1318,6 +1461,19 @@
       'On the router, remove the old port forward and add TCP <code>80</code> → <code>10.1.200.80</code> port <code>80</code>. On DNS1, remove <code>shop.office</code> and add it again with <code>10.1.200.80</code>.',
       'Access rules: <b>deny</b> <code>10.1.200.0/24</code> → <code>10.1.0.0/16</code>, then <b>permit</b> <code>any</code> → <code>any</code>. Staff → DMZ and Internet → DMZ still work. Test from WebServer with <code>test 10.1.99.20 445</code>.',
     ],
+    solution: `<ol>
+      <li>WebServer: <code>open \\\\10.1.99.20</code> (it works: the problem).</li>
+      <li>Router <b>Gi0/3</b>: <code>10.1.200.1</code> / <code>255.255.255.0</code>. Save.</li>
+      <li>Unplug WebServer, cable it to DMZ-SW. Static <code>10.1.200.80</code> / <code>255.255.255.0</code>, gateway <code>10.1.200.1</code>, DNS <code>8.8.8.8</code>.</li>
+      <li>Router: remove the old port forward, add TCP <code>80</code> → <code>10.1.200.80</code> port <code>80</code>.</li>
+      <li>DNS1: remove <code>shop.office</code>, add it again → <code>10.1.200.80</code>.</li>
+      <li>Access rules: <b>deny</b> <code>10.1.200.0/24</code> → <code>10.1.0.0/16</code>, then <b>permit</b> <code>any</code> → <code>any</code>.</li></ol>`,
+    review: c => {
+      const out = aclReview(c, 2), r = officeRouter(c), w = web17(c);
+      if (r.config.portForwards.some(f => P(f.ip) === WEB_OLD)) out.push('There is still a port forward to the old address <code>10.1.99.80</code>. Nothing lives there now: remove it.');
+      if ((IP.parseList(w.config.dns) || []).some(ip => IP.same(ip, P('10.1.0.0'), IP.maskFromPrefix(16)))) out.push('WebServer still uses an inside DNS server, which the DMZ is (rightly) not allowed to reach. Give it <code>8.8.8.8</code>.');
+      return out;
+    },
     learned: `
       <ul>
         <li>Servers the Internet can reach belong in a <b>DMZ</b>, separate from inside networks.</li>
@@ -1395,7 +1551,8 @@
       { text: 'Everyone can browse <code>www.example.com</code>',
         check: c => ['sales1', 'hr1', 'sales2', 'hr2'].every(t => canBrowse(c, tagged(c, t))) },
       { text: 'From Sales-PC2, <code>ping</code> HR-PC1: different VLANs, so the packet goes up to the router and back',
-        check: c => H.ev(c, e => e.type === 'ping' && e.ok && e.dev === tagged(c, 'sales2').id && e.dst === devIp(c, 'hr1') && IP.same(e.dst, HR18, M24)) },
+        check: c => H.ev(c, e => e.type === 'ping' && e.ok && e.dev === tagged(c, 'sales2').id && e.dst === devIp(c, 'hr1') && IP.same(e.dst, HR18, M24)),
+        verify: c => tx(c, 'sales2', devIp(c, 'hr1')).ok },
     ],
     hints: [
       'Click HR-PC1 and run <code>ipconfig</code>: <code>10.1.10.x</code> is the Sales network. Both router interfaces are in VLAN 1 on the same switch, so they share one network.',
@@ -1403,6 +1560,12 @@
       'Floor 2 has no addresses now: its PCs are still in VLAN 1. On <b>both</b> switches set P8 to <b>trunk</b> with VLANs <code>10,20</code>. Then on Floor2-SW set P3 to <code>10</code> and P4 to <code>20</code>.',
       'Run <code>ipconfig</code> on HR-PC1 to find its address, then <code>ping</code> it from Sales-PC2. Watch the packet travel up the trunk to the router and back down.',
     ],
+    solution: `<ol>
+      <li>Floor1-SW: P1 and P3 access <code>10</code>, P2 and P4 access <code>20</code>, P8 <b>trunk</b> <code>10,20</code>. Save.</li>
+      <li>Floor2-SW: P3 access <code>10</code>, P4 access <code>20</code>, P8 <b>trunk</b> <code>10,20</code>. Save.</li>
+      <li>From Sales-PC2: <code>ping 10.1.20.100</code> (HR-PC1).</li></ol>`,
+    review: c => ['Floor1-SW', 'Floor2-SW'].filter(n => { const sw = c.net.devices.find(d => d.name === n); return NG.Sim.portVlan(sw, 'P8').allowed == null; })
+      .map(n => `${n}’s trunk carries <b>all</b> VLANs. It works, but it is safer to list only the VLANs that need to cross it (<code>10,20</code>).`),
     learned: `
       <ul>
         <li><b>VLANs</b> split one physical switch into several separate networks.</li>
@@ -1458,19 +1621,22 @@
       <p class="muted small">Click a VM to change its <b>Network adapter</b>. Virtual cables are drawn dotted. DevLaptop’s labels show its three networks.</p>`,
     objectives: [
       { text: 'From WebVM, <code>browse www.example.com</code>: a NAT VM can reach the Internet',
-        check: c => H.ev(c, e => e.type === 'browse' && e.ok && e.dev === tagged(c, 'webvm').id && e.host === 'www.example.com') },
+        check: c => H.ev(c, e => e.type === 'browse' && e.ok && e.dev === tagged(c, 'webvm').id && e.host === 'www.example.com'),
+        verify: c => canBrowse(c, tagged(c, 'webvm')) },
       { text: 'From Colleague-PC, try to <code>browse</code> WebVM’s address (find it with <code>ipconfig</code> on WebVM). NAT hides it',
         check: c => H.ev(c, e => e.type === 'browse' && !e.ok && e.dev === tagged(c, 'colleague').id && /^10\.0\.2\.\d+$/.test(e.host)) },
       { text: 'Set WebVM’s network adapter to <b>Bridged</b>',
         check: c => vmPort(c, 'webvm').startsWith('br') },
       { text: 'Colleague-PC can browse WebVM at its new office address',
-        check: c => { const ip = devIp(c, 'webvm'); return ip != null && IP.same(ip, OFFICE19, M24) && H.ev(c, e => e.type === 'browse' && e.ok && e.dev === tagged(c, 'colleague').id && e.host === IP.str(ip)); } },
+        check: c => { const ip = devIp(c, 'webvm'); return ip != null && IP.same(ip, OFFICE19, M24) && H.ev(c, e => e.type === 'browse' && e.ok && e.dev === tagged(c, 'colleague').id && e.host === IP.str(ip)); },
+        verify: c => { const ip = devIp(c, 'webvm'); return ip != null && NG.Sim.browse(c.T, tagged(c, 'colleague').id, IP.str(ip)).ok; } },
       { text: 'Set TestVM’s network adapter to <b>Host-only</b>: no Internet, no office',
         check: c => { const ip = devIp(c, 'testvm'); return vmPort(c, 'testvm').startsWith('ho') && ip != null && IP.same(ip, HOSTONLY, M24) && !tx(c, 'testvm', P('8.8.8.8')).ok; } },
       { text: 'From TestVM, <code>ping 8.8.8.8</code> and read why it fails',
         check: c => H.ev(c, e => e.type === 'ping' && !e.ok && e.dev === tagged(c, 'testvm').id && e.code === 'hostonly') },
       { text: 'From DevLaptop, <code>ping</code> TestVM: the host can still reach its host-only VMs',
-        check: c => H.ev(c, e => e.type === 'ping' && e.ok && e.dev === tagged(c, 'laptop').id && e.dst != null && IP.same(e.dst, HOSTONLY, M24) && e.dst === devIp(c, 'testvm')) },
+        check: c => H.ev(c, e => e.type === 'ping' && e.ok && e.dev === tagged(c, 'laptop').id && e.dst != null && IP.same(e.dst, HOSTONLY, M24) && e.dst === devIp(c, 'testvm')),
+        verify: c => tx(c, 'laptop', devIp(c, 'testvm')).ok },
     ],
     hints: [
       'Click WebVM and run <code>browse www.example.com</code>, then <code>ipconfig</code>: its address is <code>10.0.2.x</code>, the hypervisor’s NAT network.',
@@ -1478,6 +1644,11 @@
       'Click WebVM and choose <b>Bridged</b> under Network adapter. It gets a <code>192.168.1.x</code> address from the office router. Browse that address from Colleague-PC.',
       'Click TestVM and choose <b>Host-only</b>. Run <code>ping 8.8.8.8</code> on it, then click DevLaptop and <code>ping</code> TestVM’s <code>192.168.56.x</code> address.',
     ],
+    solution: `<ol>
+      <li>WebVM: <code>browse www.example.com</code>, then <code>ipconfig</code> (<code>10.0.2.15</code>).</li>
+      <li>Colleague-PC: <code>browse 10.0.2.15</code> (fails: NAT hides it).</li>
+      <li>WebVM → Network adapter <b>Bridged</b>. Colleague-PC: <code>browse</code> its new <code>192.168.1.x</code> address.</li>
+      <li>TestVM → Network adapter <b>Host-only</b>. TestVM: <code>ping 8.8.8.8</code> (fails). DevLaptop: <code>ping</code> TestVM’s <code>192.168.56.x</code> address.</li></ol>`,
     learned: `
       <ul>
         <li>A <b>virtual machine</b> has a virtual network card. The <b>hypervisor</b> chooses what it is plugged into.</li>
@@ -1564,7 +1735,8 @@
       { text: 'FS1 and DNS1 only accept SSH from Jump1 (<b>Allow SSH from</b> on each server)',
         check: c => onlyFromJump(c, 'fs') && onlyFromJump(c, 'dns1') },
       { text: 'Hop: from IT-Laptop <code>ssh jump1.office</code>, then from Jump1 <code>ssh fs1.office</code>',
-        check: c => sshEv(c, 'it', 'jump') && sshEv(c, 'jump', 'fs') },
+        check: c => sshEv(c, 'it', 'jump') && sshEv(c, 'jump', 'fs'),
+        verify: c => tx(c, 'it', JUMP, 'tcp', 22).ok && tx(c, 'jump', P('10.1.99.20'), 'tcp', 22).ok },
       { text: 'Staff can still open <code>\\\\files.office</code> and browse <code>www.example.com</code>',
         check: c => NG.Sim.openShare(c.T, tagged(c, 'staff').id, '\\\\files.office').ok && canBrowse(c, tagged(c, 'staff')) },
     ],
@@ -1574,6 +1746,16 @@
       'Click FS1, type <code>10.1.99.10</code> in <b>Allow SSH from</b> and press <b>Apply settings</b>. Do the same on DNS1.',
       'Click IT-Laptop: <code>ssh jump1.office</code>. Now on Jump1, type <code>ssh fs1.office</code>. Try <code>ssh fs1.office</code> straight from IT-Laptop too: the router stops it.',
     ],
+    solution: `<ol>
+      <li>Router access rules, 5 in total: delete <code>permit any → 10.1.99.0/24 TCP 22</code>, add <b>permit</b> <code>10.1.30.0/24</code> → <code>10.1.99.10</code> TCP <code>22</code>, and move it above the deny.</li>
+      <li>FS1 and DNS1: <b>Allow SSH from</b> <code>10.1.99.10</code>. Apply.</li>
+      <li>Jump1 (extra safety): <b>Allow SSH from</b> <code>10.1.30.0/24</code>.</li>
+      <li>IT-Laptop: <code>ssh jump1.office</code>, then <code>ssh fs1.office</code>.</li></ol>`,
+    review: c => {
+      const out = aclReview(c, 5);
+      if (!String(tagged(c, 'jump').config.sshAllow || '').trim()) out.push('Jump1 itself accepts SSH from anyone; only the router protects it. Set its <b>Allow SSH from</b> to <code>10.1.30.0/24</code> for defence in depth.');
+      return out;
+    },
     learned: `
       <ul>
         <li><b>SSH</b> (TCP 22) gives an encrypted command line on another computer.</li>
@@ -1583,6 +1765,24 @@
         <li>Cloud networks work the same way: a bastion host, plus security groups that only allow SSH from it.</li>
       </ul>`,
   });
+
+  // ---------- Judging a level (shared by the game and the tests) ----------
+  const safe = (f, c) => { try { return !!f(c); } catch (e) { console.warn(e); return false; } };
+
+  NG.Objectives = {
+    // did[i]: the step has been done ("check"). ok[i]: it was done and still holds now ("verify", where given).
+    // A level is complete when every ok[i] is true at the same time.
+    evaluate(L, c) {
+      const did = L.objectives.map(o => safe(o.check, c));
+      const ok = L.objectives.map((o, i) => did[i] && (!o.verify || safe(o.verify, c)));
+      return { did, ok, complete: ok.every(Boolean) };
+    },
+    // Suggestions on a working solution (HTML strings). Empty means nothing to improve.
+    review(L, c) {
+      if (!L.review) return [];
+      try { return L.review(c) || []; } catch (e) { console.warn(e); return []; }
+    },
+  };
 
   NG.Levels = Levels;
 })();

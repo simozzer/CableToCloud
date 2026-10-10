@@ -1,0 +1,32 @@
+exports[`default settings of every device type 1`] = `
+
+pc (host, PC): ports eth0
+  {"mode":"dhcp","ip":"","mask":"","gw":"","dns":""}
+laptop (host, Laptop): ports eth0
+  {"mode":"dhcp","ip":"","mask":"","gw":"","dns":""}
+server (host, Server): ports eth0
+  {"mode":"dhcp","ip":"","mask":"","gw":"","dns":"","services":{"web":false,"files":false,"dns":false,"ssh":false},"dnsRecords":[],"sshAllow":""}
+printer (host, Printer): ports eth0
+  {"mode":"dhcp","ip":"","mask":"","gw":"","dns":""}
+switch (switch, Switch): ports P1 P2 P3 P4 P5 P6 P7 P8
+  {}
+mswitch (switch, Switch): ports P1 P2 P3 P4 P5 P6 P7 P8
+  {"ports":{}}
+homerouter (router, Router): ports WAN LAN1 LAN2 LAN3 LAN4
+  {"ifaces":{"WAN":{"mode":"dhcp","ip":"","mask":"","gw":"","dns":""},"LAN":{"ip":"192.168.1.1","mask":"255.255.255.0","dhcp":{"enabled":true,"start":"192.168.1.100","end":"192.168.1.199","dns":"192.168.1.1"}}},"nat":true,"dnsProxy":true,"portForwards":[]}
+  interfaces [{"name":"WAN","ports":["WAN"],"role":"wan"},{"name":"LAN","ports":["LAN1","LAN2","LAN3","LAN4"],"role":"lan"}]
+isprouter (router, Router): ports WAN LAN
+  {"ifaces":{"WAN":{"mode":"dhcp","ip":"","mask":"","gw":"","dns":""},"LAN":{"ip":"192.168.1.1","mask":"255.255.255.0","dhcp":{"enabled":true,"start":"192.168.1.100","end":"192.168.1.199","dns":"192.168.1.1"}}},"nat":true,"dnsProxy":true,"portForwards":[]}
+  interfaces [{"name":"WAN","ports":["WAN"],"role":"wan"},{"name":"LAN","ports":["LAN"],"role":"lan"}]
+officerouter (router, Router): ports Gi0/0 Gi0/1 Gi0/2 Gi0/3
+  {"ifaces":{"Gi0/0":{"mode":"dhcp","ip":"","mask":"","gw":"","dns":""},"Gi0/1":{"ip":"","mask":"","dhcp":{"enabled":false,"start":"","end":"","dns":""}},"Gi0/2":{"ip":"","mask":"","dhcp":{"enabled":false,"start":"","end":"","dns":""}},"Gi0/3":{"ip":"","mask":"","dhcp":{"enabled":false,"start":"","end":"","dns":""}}},"nat":true,"dnsProxy":false,"portForwards":[],"acl":[]}
+  interfaces [{"name":"Gi0/0","ports":["Gi0/0"],"role":"wan"},{"name":"Gi0/1","ports":["Gi0/1"],"role":"lan"},{"name":"Gi0/2","ports":["Gi0/2"],"role":"lan"},{"name":"Gi0/3","ports":["Gi0/3"],"role":"lan"}]
+vmhost (router, Laptop): ports eth0 br1 br2 nat1 nat2 ho1 ho2
+  {"ifaces":{"eth0":{"mode":"dhcp","ip":"","mask":"","gw":"","dns":""},"NAT":{"ip":"10.0.2.2","mask":"255.255.255.0","dhcp":{"enabled":true,"start":"10.0.2.15","end":"10.0.2.30","dns":"8.8.8.8"}},"Host-only":{"ip":"192.168.56.1","mask":"255.255.255.0","dhcp":{"enabled":true,"start":"192.168.56.101","end":"192.168.56.199","dns":""}}},"nat":true,"dnsProxy":false,"portForwards":[],"acl":[]}
+  interfaces [{"name":"eth0","ports":["eth0","br1","br2"],"role":"wan"},{"name":"NAT","ports":["nat1","nat2"],"role":"lan"},{"name":"Host-only","ports":["ho1","ho2"],"role":"lan","hostOnly":true}]
+vm (host, VM): ports eth0
+  {"mode":"dhcp","ip":"","mask":"","gw":"","dns":"","services":{"web":false,"files":false,"dns":false,"ssh":false},"dnsRecords":[],"sshAllow":""}
+internet (internet, Internet): ports ISP
+  {}
+
+`;

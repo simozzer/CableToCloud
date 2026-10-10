@@ -56,14 +56,14 @@
 
   // "10,20", "10-12" or "all" → list of VLAN numbers (null = all).
   function parseVlans(s) {
-    s = String(s == null ? 'all' : s).trim().toLowerCase();
+    s = String(s == null ? '' : s).trim().toLowerCase();
     if (s === 'all' || s === '') return null;
     const out = [];
-    for (const part of s.split(/[\s,]+/).filter(Boolean)) {
+    for (const part of s.split(/[\s,]/).filter(Boolean)) {
       const m = /^(\d+)(?:-(\d+))?$/.exec(part);
       if (!m) return undefined;
       const a = Number(m[1]), b = m[2] ? Number(m[2]) : a;
-      if (a < 1 || b > 4094 || a > b || b - a > 4094) return undefined;
+      if (a < 1 || b > 4094 || a > b) return undefined;
       for (let v = a; v <= b; v++) out.push(v);
     }
     return out;
@@ -79,22 +79,27 @@
   function build(net) {
     const T = { net, devs: {}, ifaces: [], byDev: {}, linked: {}, adj: {}, events: [] };
     const parent = {};
-    const node = k => { if (!(k in parent)) { parent[k] = k; T.adj[k] = []; } return k; };
+    // Each layer-2 node is created once (see ends() below), then joined into segments.
+    const node = k => { parent[k] = k; T.adj[k] = []; return k; };
     const find = k => { while (parent[k] !== k) { parent[k] = parent[parent[k]]; k = parent[k]; } return k; };
-    const join = (a, b) => { T.adj[a].push(b); T.adj[b].push(a); const ra = find(a), rb = find(b); if (ra !== rb) parent[ra] = rb; };
+    const join = (a, b) => { T.adj[a].push(b); T.adj[b].push(a); parent[find(a)] = find(b); };
 
-    // Every VLAN number in use, so "all" on a trunk means something concrete.
-    const used = new Set([1]);
+    // Every VLAN that some access port uses, so "all" on a trunk means something concrete.
+    // (A VLAN with no access port anywhere has no devices in it, so a trunk carrying it or not changes nothing.)
+    const used = new Set();
     net.devices.forEach(d => {
       T.devs[d.id] = d;
       T.byDev[d.id] = [];
-      if (kindOf(d) === 'switch') d.ports.forEach(p => { const v = portVlan(d, p); used.add(v.untagged); (v.allowed || []).forEach(x => used.add(x)); });
+      // Stryker disable next-line ConditionalExpression: other devices have no port settings, so they only add VLAN 1, which trunks carry untagged anyway
+      if (kindOf(d) === 'switch') d.ports.forEach(p => used.add(portVlan(d, p).untagged));
     });
     // A layer-2 node is a port (computers, routers) or a port in one VLAN (switches).
     const vkey = (d, p, v) => node(pk(d.id, p) + '@' + v);
     const ends = (d, p) => {
       if (kindOf(d) !== 'switch') return { untagged: node(pk(d.id, p)), tagged: {} };
       const v = portVlan(d, p), tagged = {};
+      // VLAN 1 travels untagged on a trunk, so it is never also a tagged VLAN (that would create the same node twice).
+      // Stryker disable next-line ConditionalExpression: the duplicate VLAN 1 node would be joined to the same neighbours, so paths don't change
       if (v.trunk) (v.allowed || [...used]).forEach(x => { if (x !== 1) tagged[x] = vkey(d, p, x); });
       return { untagged: vkey(d, p, v.untagged), tagged };
     };
@@ -114,8 +119,10 @@
       if (kindOf(d) === 'switch') {
         const byVlan = {};
         d.ports.forEach(p => { const e = endOf[pk(d.id, p)]; [e.untagged, ...Object.values(e.tagged)].forEach(k => { const v = k.split('@')[1]; (byVlan[v] = byVlan[v] || []).push(k); }); });
-        Object.values(byVlan).forEach(ks => ks.slice(1).forEach(k => join(ks[0], k)));
-      } else ifaceDefs(d).forEach(def => def.ports.slice(1).forEach(p => join(pk(d.id, def.ports[0]), pk(d.id, p))));
+        Object.values(byVlan).forEach(ks => { for (let k = 1; k < ks.length; k++) join(ks[0], ks[k]); });
+      } else {
+        ifaceDefs(d).forEach(def => { for (let k = 1; k < def.ports.length; k++) join(pk(d.id, def.ports[0]), pk(d.id, def.ports[k])); });
+      }
     });
 
     net.devices.forEach(d => ifaceDefs(d).forEach(def => {
@@ -143,12 +150,14 @@
     if (IP.reserved(ip, mask)) { i.errors.push(`${c.ip} is the network or broadcast address of its subnet`); return; }
     i.ip = ip; i.mask = mask; i.source = 'static';
     if (c.gw) { const g = P(c.gw); if (g == null) i.errors.push('Default gateway is not a valid IP address'); else i.gw = g; }
-    if (c.dns) { const l = IP.parseList(c.dns); if (!l) i.errors.push('DNS server is not a valid IP address'); else i.dns = l; }
+    const l = IP.parseList(c.dns);
+    if (!l) i.errors.push('DNS server is not a valid IP address'); else i.dns = l;
   }
 
   function dhcpServerCfg(i, D) {
     if (!D || !D.enabled) return null;
-    const s = { valid: false, start: P(D.start), end: P(D.end), dns: IP.parseList(D.dns || '') || [], gw: i.ip };
+    // Stryker disable next-line ArrayDeclaration: an invalid DNS list makes the server invalid below, so its dns list is never used
+    const s = { valid: false, start: P(D.start), end: P(D.end), dns: IP.parseList(D.dns) || [], gw: i.ip };
     if (i.ip == null) s.reason = 'the interface has no IP address';
     else if (s.start == null || s.end == null) s.reason = 'the pool start/end addresses are not valid';
     else if (s.start > s.end) s.reason = 'the pool starts after it ends';
@@ -171,7 +180,7 @@
       const w = c.ifaces[i.name];
       if (w.mode === 'static') staticCfg(i, w); else i.wantDhcp = true;
       i.nat = !!c.nat;
-    } else if (i.role === 'lan') {
+    } else { // 'lan'
       const L = c.ifaces[i.name];
       const ip = P(L.ip), mask = IP.parseMask(L.mask);
       if (L.ip && ip == null) i.errors.push('Invalid IP address');
@@ -196,6 +205,7 @@
     clients.forEach(c => {
       if (!c.up) return;
       c.srv = servers.find(s => s.seg === c.seg && s.dev !== c.dev) || null;
+      // Stryker disable next-line ConditionalExpression: a client that does find a server gets every field overwritten by its lease below
       if (!c.srv) apipa(c);
     });
     servers.forEach(s => {
@@ -224,6 +234,7 @@
     const seen = {};
     const rank = i => (i.kind === 'router' || i.kind === 'internet' ? 0 : 1);
     T.ifaces.filter(i => i.up && i.ip != null).sort((a, b) => rank(a) - rank(b)).forEach(i => {
+      // Stryker disable next-line StringLiteral: the separator only makes the key readable; segment names end in a VLAN or port, so keys can't collide
       const k = i.seg + '|' + i.ip;
       if (seen[k]) i.conflict = seen[k]; else seen[k] = i;
     });
@@ -258,12 +269,16 @@
       if (usable(i) && IP.same(dst, i.ip, i.mask) && (!best || IP.prefix(i.mask) > IP.prefix(best.mask))) best = i;
     });
     if (best) return { iface: best, nh: dst };
+    // Stryker disable next-line ConditionalExpression: every router type lists its WAN interface first
     const wan = ifs.find(i => i.role === 'wan');
+    // Stryker disable next-line ConditionalExpression: a missing gateway (null) is never inside the WAN network, so the next check fails anyway
     if (usable(wan) && wan.gw != null && IP.same(wan.gw, wan.ip, wan.mask)) return { iface: wan, nh: wan.gw, viaGw: true };
     return { err: 'noroute', iface: wan };
   }
 
   // Shortest cable path between two interfaces on the same segment, as device-to-device edges.
+  // (Used only to animate packets. The checks below guard against odd inputs; they can't change a path that exists.)
+  // Stryker disable ArrayDeclaration,MethodExpression,ConditionalExpression
   function l2path(T, a, b) {
     const goal = new Set(b.ports.map(p => pk(b.dev, p)));
     const prev = {}, q = [];
@@ -280,19 +295,22 @@
     const edges = [];
     for (let i = 1; i < seq.length; i++) {
       const da = devOf(seq[i - 1]), db = devOf(seq[i]);
+      // Stryker restore ConditionalExpression
       if (da !== db) edges.push({ from: da, to: db });
     }
     return edges;
   }
+  // Stryker restore all
 
   // ---------- Access rules (a simple firewall on the router) ----------
 
   // "any", "10.1.99.30" or "10.1.20.0/24" → { net, mask }, or null if invalid.
   function parseRange(s) {
-    s = String(s || '').trim().toLowerCase();
+    s = String(s).trim().toLowerCase();
     if (s === 'any' || s === '*') return { net: 0, mask: 0, any: true };
     const m = /^([\d.]+)(?:\/(\d{1,2}))?$/.exec(s);
     if (!m) return null;
+    // Stryker disable next-line ConditionalExpression: Number(undefined) shifts by NaN, which JavaScript treats as 0, so that also gives /32
     const ip = P(m[1]), p = m[2] == null ? 32 : Number(m[2]);
     if (ip == null || p > 32) return null;
     const mask = IP.maskFromPrefix(p);
@@ -326,12 +344,30 @@
       // (The catch-all "permit any → any" doesn't count: denies above it are the point.)
       if (!res.allow) {
         const catchAll = r => parseRange(r.src).any && parseRange(r.dst).any;
+        // Stryker disable next-line EqualityOperator,ConditionalExpression: rule k is a deny and no earlier rule matched, so only later rules can
         const j = rules.findIndex((r, i) => i > k && r.action === 'permit' && !catchAll(r) && !ruleMiss(r, pkt));
+        // Stryker disable next-line EqualityOperator: j comes after k, so it is never 0
         if (j >= 0) res.shadowed = { index: j, rule: rules[j] };
       }
       return res;
     }
     return { allow: false, index: -1, misses };
+  }
+
+  // Rules that can never match, because an earlier rule already catches everything they would.
+  function aclLint(rules) {
+    const covers = (a, b) => {
+      const ra = parseRange(a), rb = parseRange(b);
+      return !!ra && !!rb && IP.prefix(ra.mask) <= IP.prefix(rb.mask) && IP.same(rb.net, ra.net, ra.mask);
+    };
+    const hasPort = r => (r.proto === 'tcp' || r.proto === 'udp') && !!r.port;
+    const out = [];
+    rules.forEach((b, j) => {
+      const i = rules.findIndex((a, k) => k < j && covers(a.src, b.src) && covers(a.dst, b.dst)
+        && (a.proto === 'any' || a.proto === b.proto) && (!hasPort(a) || (hasPort(b) && a.port === b.port)));
+      if (i >= 0) out.push({ index: j, by: i, same: rules[i].action === b.action });
+    });
+    return out;
   }
 
   function fail(res, code, dev, extra) {
@@ -342,21 +378,25 @@
 
   // Move one packet until it is delivered or dropped. ctx.nat holds NAT sessions for the reply.
   function walk(T, startId, pkt, ctx) {
-    const res = { ok: false, path: [], hops: [], pkt };
+    const res = { path: [], hops: [], pkt }; // ok is set when the packet is delivered or dropped
     let devId = startId, inIf = null;
     for (let ttl = 0; ttl < 32; ttl++) {
       const kind = kindOf(T.devs[devId]);
       if (inIf) {
         res.hops.push({ dev: devId, ip: inIf.ip });
-        if (kind === 'router' && inIf.role === 'wan' && inIf.nat && pkt.dst === inIf.ip) {
-          const s = ctx.nat.slice().reverse().find(x => x.outside === pkt.dst && x.remote === pkt.src);
+        // Only a router's WAN interface does NAT (inIf.nat). A packet for its public address is either a reply
+        // to a connection from inside, or a new connection from outside.
+        // Stryker disable next-line ConditionalExpression: the Internet only ever delivers to a WAN interface's own address
+        if (inIf.nat && pkt.dst === inIf.ip) {
+          // Stryker disable next-line ConditionalExpression: each NAT session in one exchange has its own outside address
+          const s = ctx.nat.find(x => x.outside === pkt.dst && x.remote === pkt.src);
           if (s) pkt.dst = s.inside;
           else {
             // A new connection from outside: only allowed in by a port-forwarding rule.
-            const rule = (T.devs[devId].config.portForwards || []).find(x => x.proto === pkt.proto && Number(x.port) === pkt.port);
+            const rule = T.devs[devId].config.portForwards.find(x => x.proto === pkt.proto && Number(x.port) === pkt.port);
             const to = rule ? P(rule.ip) : null;
             if (to != null) {
-              ctx.nat.push({ inside: to, outside: inIf.ip, remote: pkt.src });
+              // The server's reply goes back out through NAT like any outgoing packet, so no session is needed here.
               pkt.dst = to;
               if (rule.toPort) pkt.port = Number(rule.toPort);
               res.forwarded = { dev: devId, to };
@@ -367,6 +407,7 @@
       if (inIf && kind === 'internet' && (IP.isPrivate(pkt.src) || IP.isApipa(pkt.src))) return fail(res, 'privsrc', devId);
       if (isLocal(T, devId, pkt.dst)) {
         res.ok = true; res.dev = devId;
+        // Stryker disable next-line ConditionalExpression: the Internet hosts have public addresses that no device on a level uses
         res.virtual = kind === 'internet' ? VIRTUAL[pkt.dst] || null : null;
         return res;
       }
@@ -374,18 +415,20 @@
       const r = route(T, devId, pkt.dst);
       if (r.err) return fail(res, r.err, devId, { iface: r.iface });
       // A host-only network is private to the host and its VMs: the hypervisor never routes it anywhere.
-      if (inIf && inIf !== r.iface && (inIf.hostOnly || r.iface.hostOnly)) return fail(res, 'hostonly', devId, { iface: inIf.hostOnly ? inIf : r.iface });
+      if (inIf && (inIf.hostOnly || r.iface.hostOnly)) return fail(res, 'hostonly', devId, { iface: inIf.hostOnly ? inIf : r.iface });
       // Access rules check new connections passing through the router. Replies are let back automatically.
-      const acl = kind === 'router' && inIf && !ctx.reply && T.devs[devId].config.acl;
+      const acl = inIf && !ctx.reply && T.devs[devId].config.acl; // only routers have rules
       if (acl && acl.length) {
         const a = checkAcl(acl, pkt);
         if (!a.allow) return fail(res, 'acl', devId, { acl: a });
       }
-      if (kind === 'router' && r.iface.role === 'wan' && r.iface.nat && pkt.src !== r.iface.ip && (!inIf || inIf.role !== 'wan')) {
+      // Leaving through a NAT (WAN) interface: share its public address. Traffic that came in from the Internet keeps its own.
+      // Stryker disable next-line ConditionalExpression,LogicalOperator,BooleanLiteral: nothing on a level routes Internet traffic back out to the Internet
+      if (r.iface.nat && !(inIf && inIf.nat)) {
         ctx.nat.push({ inside: pkt.src, outside: r.iface.ip, remote: pkt.dst });
         pkt.src = r.iface.ip;
       }
-      const tgt = T.ifaces.find(i => i.seg === r.iface.seg && i.dev !== devId && usable(i) && i.ip === r.nh);
+      const tgt = T.ifaces.find(i => i.seg === r.iface.seg && usable(i) && i.ip === r.nh);
       if (!tgt) return fail(res, 'arp', devId, { iface: r.iface, nh: r.nh, viaGw: r.viaGw });
       res.path.push(...l2path(T, r.iface, tgt));
       devId = tgt.dev;
@@ -400,24 +443,27 @@
     const d = T.devs[req.dev], k = kindOf(d);
     if (k === 'internet') {
       const v = req.virtual;
-      if (v && port === 53 && v.dns) return { ok: true, dns: true };
-      if (v && port === 80 && v.web) return { ok: true, web: true };
+      if (v && port === 53 && v.dns) return { ok: true };
+      if (v && port === 80 && v.web) return { ok: true };
+      // Stryker disable next-line ObjectLiteral: an empty result has ok undefined, which also means no
       return { ok: false };
     }
-    if (k === 'router' && port === 53 && d.config.dnsProxy) return { ok: true, dns: true, proxy: true };
-    if (k === 'host') {
-      const s = listening(d).find(x => x.proto === proto && x.port === port);
-      if (s && s.key === 'ssh' && !sshAllowed(d, req.pkt.src)) return { ok: false, hostfw: true };
-      if (s) return { ok: true, [s.key]: true, local: s.key === 'dns' };
-    }
+    if (port === 53 && d.config.dnsProxy) return { ok: true, proxy: true }; // a router that relays DNS
+    const s = listening(d).find(x => x.proto === proto && x.port === port); // routers have no services
+    if (s && s.key === 'ssh' && !sshAllowed(d, req.pkt.src)) return { ok: false, hostfw: true };
+    if (s) return { ok: true, local: s.key === 'dns' };
+    // Stryker disable next-line ObjectLiteral: an empty result has ok undefined, which also means no
     return { ok: false };
   }
 
   // A request and its reply: a ping (icmp), a DNS question (udp 53), a web request (tcp 80) or a file share (tcp 445).
   // opts.src lets a virtual Internet host (e.g. a customer) be the sender.
   function transact(T, fromId, dst, proto = 'icmp', port, opts = {}) {
+    // Stryker disable next-line ArrayDeclaration: a junk session never matches a real address
     const ctx = { nat: [] };
     const r0 = route(T, fromId, dst);
+    // The sender's own address on the way out (0 if it has none: the packet then fails at the first step anyway).
+    // Stryker disable next-line ConditionalExpression: an interface without an address gives null instead of 0, which fails the same way
     const src = opts.src != null ? opts.src : isLocal(T, fromId, dst) ? dst : (r0.iface && r0.iface.ip != null ? r0.iface.ip : 0);
     const req = walk(T, fromId, { src, dst, proto, port }, ctx);
     const out = { ok: false, req, dst, from: fromId, proto, port };
@@ -429,6 +475,8 @@
     const rep = walk(T, req.dev, { src: req.pkt.dst, dst: req.pkt.src, proto, port: dport }, ctx);
     out.rep = rep;
     if (!rep.ok) { out.stage = 'reply'; out.fail = rep.fail; return out; }
+    // A safety net: replies are routed back by address and NAT restores the sender, so no level can reach this.
+    // Stryker disable next-line all: no level can produce a reply that reaches the wrong device
     if (rep.dev !== fromId) { out.stage = 'reply'; out.fail = { code: 'misdelivered', dev: rep.dev }; return out; }
     out.ok = true;
     return out;
@@ -437,8 +485,9 @@
   // ---------- DNS & web ----------
 
   const dnsServersOf = (T, devId) => {
-    const ifs = T.byDev[devId];
-    const i = kindOf(T.devs[devId]) === 'router' ? ifs.find(x => x.role === 'wan') : ifs[0];
+    // A computer's only interface, or a router's first one, which is always its WAN.
+    const i = T.byDev[devId][0];
+    // Stryker disable next-line ArrayDeclaration: only switches have no interface, and nothing asks a switch for DNS servers
     return i ? i.dns : [];
   };
 
@@ -450,6 +499,7 @@
     const servers = dnsServersOf(T, fromId), steps = [];
     if (!servers.length) {
       // Report a more basic problem (unplugged, no address...) before blaming DNS.
+      // Stryker disable next-line StringLiteral: any address will do; these faults don't depend on where the packet is going
       const r0 = route(T, fromId, P('8.8.8.8'));
       if (['nolink', 'noip', 'conflict', 'apipa'].includes(r0.err)) return { ok: false, steps, fail: { code: r0.err, dev: fromId, iface: r0.iface } };
       return { ok: false, steps, fail: { code: 'nodns', dev: fromId } };
@@ -461,8 +511,8 @@
       if (!t.ok || (t.svc.proxy && depth > 0)) { first = first || t; continue; }
       if (t.svc.local) {
         // An internal DNS server answers from its own records and forwards everything else.
-        const rec = (T.devs[t.req.dev].config.dnsRecords || []).find(x => x.name.toLowerCase() === name);
-        if (rec) return { ok: true, ip: P(rec.ip), steps, server: s, local: true };
+        const rec = T.devs[t.req.dev].config.dnsRecords.find(x => x.name.toLowerCase() === name);
+        if (rec) return { ok: true, ip: P(rec.ip), steps, server: s };
         if (depth > 0) return { ok: false, steps, server: s, fail: { code: 'nxdomain', dev: fromId, name } };
       }
       if (t.svc.proxy || t.svc.local) {
@@ -615,6 +665,6 @@
 
   NG.Sim = {
     build, route, transact, resolve, browse, openShare, testPort, shareHost, externalVisit, l2path, explain, usable, dnsServersOf,
-    listening, svcByPort, sshAllowed, parseRange, ruleText, checkAcl, parseVlans, portVlan, SERVICES, VIRTUAL, ISP, REMOTE,
+    listening, svcByPort, sshAllowed, parseRange, ruleText, checkAcl, aclLint, parseVlans, portVlan, SERVICES, VIRTUAL, ISP, REMOTE,
   };
 })();

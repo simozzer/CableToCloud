@@ -1,0 +1,635 @@
+exports[`every level’s starting network (layout snapshot) 1`] = `
+
+Level 1: dhcp
+  toolbox {"pc":1}; new computers start as none
+  Internet1 (internet) at 120,290 [locked]
+    {}
+  Router1 (homerouter) at 420,290 [locked, settings locked]
+    {"ifaces":{"WAN":{"mode":"dhcp","ip":"","mask":"","gw":"","dns":""},"LAN":{"ip":"192.168.1.1","mask":"255.255.255.0","dhcp":{"enabled":true,"start":"192.168.1.100","end":"192.168.1.199","dns":"192.168.1.1"}}},"nat":true,"dnsProxy":true,"portForwards":[]}
+  Internet1:ISP – Router1:WAN (locked)
+
+Level 2: static
+  Internet1 (internet) at 120,290 [locked]
+    {}
+  Router1 (homerouter) at 420,290 [locked, settings locked]
+    {"ifaces":{"WAN":{"mode":"dhcp","ip":"","mask":"","gw":"","dns":""},"LAN":{"ip":"192.168.1.1","mask":"255.255.255.0","dhcp":{"enabled":false,"start":"192.168.1.100","end":"192.168.1.199","dns":"192.168.1.1"}}},"nat":true,"dnsProxy":true,"portForwards":[]}
+  PC1 (pc) at 740,290 [locked, tag pc1]
+    {"mode":"dhcp","ip":"","mask":"","gw":"","dns":""}
+  Internet1:ISP – Router1:WAN (locked)
+  Router1:LAN1 – PC1:eth0 (locked)
+
+Level 3: switch
+  toolbox {"switch":1,"pc":3,"server":1}; new computers start as dhcp
+  Internet1 (internet) at 110,290 [locked]
+    {}
+  Router1 (isprouter) at 320,290 [locked, settings locked]
+    {"ifaces":{"WAN":{"mode":"dhcp","ip":"","mask":"","gw":"","dns":""},"LAN":{"ip":"192.168.1.1","mask":"255.255.255.0","dhcp":{"enabled":true,"start":"192.168.1.100","end":"192.168.1.199","dns":"192.168.1.1"}}},"nat":true,"dnsProxy":true,"portForwards":[]}
+  Internet1:ISP – Router1:WAN (locked)
+
+Level 4: router
+  Internet1 (internet) at 110,290 [locked]
+    {}
+  Router1 (homerouter) at 330,290 [locked]
+    {"ifaces":{"WAN":{"mode":"dhcp","ip":"","mask":"","gw":"","dns":""},"LAN":{"ip":"192.168.0.1","mask":"255.255.255.0","dhcp":{"enabled":true,"start":"192.168.0.100","end":"192.168.0.199","dns":"192.168.0.1"}}},"nat":true,"dnsProxy":true,"portForwards":[]}
+  Switch1 (switch) at 560,290 [locked]
+    {}
+  PC1 (pc) at 800,120 [locked]
+    {"mode":"dhcp","ip":"","mask":"","gw":"","dns":""}
+  PC2 (pc) at 860,290 [locked]
+    {"mode":"dhcp","ip":"","mask":"","gw":"","dns":""}
+  PC3 (pc) at 800,460 [locked]
+    {"mode":"dhcp","ip":"","mask":"","gw":"","dns":""}
+  Printer1 (printer) at 560,480 [locked]
+    {"mode":"static","ip":"10.20.30.10","mask":"255.255.255.0","gw":"10.20.30.1","dns":"1.1.1.1"}
+  Internet1:ISP – Router1:WAN (locked)
+  Router1:LAN1 – Switch1:P1 (locked)
+  Switch1:P2 – PC1:eth0 (locked)
+  Switch1:P3 – PC2:eth0 (locked)
+  Switch1:P4 – PC3:eth0 (locked)
+  Switch1:P5 – Printer1:eth0 (locked)
+
+Level 5: dns
+  Internet1 (internet) at 110,290 [locked]
+    {}
+  Router1 (homerouter) at 330,290 [locked, settings locked]
+    {"ifaces":{"WAN":{"mode":"dhcp","ip":"","mask":"","gw":"","dns":""},"LAN":{"ip":"192.168.1.1","mask":"255.255.255.0","dhcp":{"enabled":true,"start":"192.168.1.100","end":"192.168.1.199","dns":"192.168.1.1"}}},"nat":true,"dnsProxy":true,"portForwards":[]}
+  Switch1 (switch) at 560,290 [locked]
+    {}
+  PC1 (pc) at 800,160 [locked, tag pc1]
+    {"mode":"static","ip":"192.168.1.20","mask":"255.255.255.0","gw":"192.168.1.1","dns":"192.168.1.53"}
+  PC2 (pc) at 800,430 [locked, tag pc2]
+    {"mode":"dhcp","ip":"","mask":"","gw":"","dns":""}
+  Internet1:ISP – Router1:WAN (locked)
+  Router1:LAN1 – Switch1:P1 (locked)
+  Switch1:P2 – PC1:eth0 (locked)
+  Switch1:P3 – PC2:eth0 (locked)
+
+Level 6: subnets
+  toolbox {"switch":2,"pc":2,"laptop":2}; new computers start as dhcp
+  Internet1 (internet) at 110,290 [locked]
+    {}
+  Router1 (officerouter) at 330,290 [locked]
+    {"ifaces":{"Gi0/0":{"mode":"dhcp","ip":"","mask":"","gw":"","dns":""},"Gi0/1":{"ip":"","mask":"","dhcp":{"enabled":false,"start":"","end":"","dns":""}},"Gi0/2":{"ip":"","mask":"","dhcp":{"enabled":false,"start":"","end":"","dns":""}},"Gi0/3":{"ip":"","mask":"","dhcp":{"enabled":false,"start":"","end":"","dns":""}}},"nat":true,"dnsProxy":false,"portForwards":[],"acl":[]}
+  Internet1:ISP – Router1:Gi0/0 (locked)
+
+Level 7: troubleshoot
+  Internet1 (internet) at 90,290 [locked]
+    {}
+  Router1 (homerouter) at 260,290 [locked, settings locked]
+    {"ifaces":{"WAN":{"mode":"dhcp","ip":"","mask":"","gw":"","dns":""},"LAN":{"ip":"192.168.1.1","mask":"255.255.255.0","dhcp":{"enabled":true,"start":"192.168.1.100","end":"192.168.1.199","dns":"192.168.1.1"}}},"nat":true,"dnsProxy":true,"portForwards":[]}
+  Switch1 (switch) at 470,290 [locked]
+    {}
+  Printer (printer) at 330,490 [locked, tag printer]
+    {"mode":"static","ip":"192.168.1.20","mask":"255.255.255.0","gw":"192.168.1.1","dns":"8.8.8.8"}
+  Reception (pc) at 330,100 [locked, tag reception]
+    {"mode":"static","ip":"192.168.1.30","mask":"255.255.255.0","gw":"192.168.1.254","dns":"8.8.8.8"}
+  Accounts (pc) at 600,80 [locked, tag accounts]
+    {"mode":"static","ip":"192.168.1.20","mask":"255.255.255.0","gw":"192.168.1.1","dns":"8.8.8.8"}
+  Design (pc) at 770,150 [locked, tag design]
+    {"mode":"static","ip":"192.168.1.61","mask":"255.255.255.252","gw":"192.168.1.1","dns":"8.8.8.8"}
+  Sales (laptop) at 770,450 [locked, tag sales]
+    {"mode":"static","ip":"192.168.1.40","mask":"255.255.255.0","gw":"192.168.1.1","dns":"192.168.1.53"}
+  Manager (laptop) at 600,520 [locked, tag manager]
+    {"mode":"static","ip":"192.168.2.45","mask":"255.255.255.0","gw":"192.168.1.1","dns":"8.8.8.8"}
+  Switch2 (switch) at 770,300 [locked]
+    {}
+  Warehouse (pc) at 915,300 [locked, tag warehouse]
+    {"mode":"dhcp","ip":"","mask":"","gw":"","dns":""}
+  Internet1:ISP – Router1:WAN (locked)
+  Router1:LAN1 – Switch1:P1 (locked)
+  Switch1:P2 – Printer:eth0 (locked)
+  Switch1:P3 – Reception:eth0 (locked)
+  Switch1:P4 – Accounts:eth0 (locked)
+  Switch1:P5 – Design:eth0 (locked)
+  Switch1:P6 – Sales:eth0 (locked)
+  Switch1:P7 – Manager:eth0 (locked)
+  Switch2:P1 – Warehouse:eth0 (locked)
+
+Level 8: portforward
+  features {"portForward":true}
+  Internet1 (internet) at 110,290 [locked]
+    {}
+  Router1 (homerouter) at 330,290 [locked]
+    {"ifaces":{"WAN":{"mode":"dhcp","ip":"","mask":"","gw":"","dns":""},"LAN":{"ip":"192.168.1.1","mask":"255.255.255.0","dhcp":{"enabled":true,"start":"192.168.1.100","end":"192.168.1.199","dns":"192.168.1.1"}}},"nat":true,"dnsProxy":true,"portForwards":[]}
+  Switch1 (switch) at 560,290 [locked]
+    {}
+  PC1 (pc) at 800,150 [locked, tag pc1]
+    {"mode":"dhcp","ip":"","mask":"","gw":"","dns":""}
+  WebServer (server) at 800,440 [locked, tag web]
+    {"mode":"static","ip":"192.168.1.80","mask":"255.255.255.0","gw":"","dns":"8.8.8.8","services":{"web":false,"files":false,"dns":false,"ssh":false},"dnsRecords":[],"sshAllow":""}
+  Internet1:ISP – Router1:WAN (locked)
+  Router1:LAN1 – Switch1:P1 (locked)
+  Switch1:P2 – PC1:eth0 (locked)
+  Switch1:P3 – WebServer:eth0 (locked)
+
+Level 9: subnet-basics
+  Subnet helper opens on 192.168.1.0; tutorial
+  Internet1 (internet) at 140,300 [locked]
+    {}
+  Router1 (officerouter) at 400,300 [locked]
+    {"ifaces":{"Gi0/0":{"mode":"dhcp","ip":"","mask":"","gw":"","dns":""},"Gi0/1":{"ip":"","mask":"","dhcp":{"enabled":false,"start":"","end":"","dns":""}},"Gi0/2":{"ip":"","mask":"","dhcp":{"enabled":false,"start":"","end":"","dns":""}},"Gi0/3":{"ip":"","mask":"","dhcp":{"enabled":false,"start":"","end":"","dns":""}}},"nat":true,"dnsProxy":false,"portForwards":[],"acl":[]}
+  Internet1:ISP – Router1:Gi0/0 (locked)
+
+Level 10: subnet-halves
+  Subnet helper opens on 192.168.50.0
+  Internet1 (internet) at 90,300 [locked]
+    {}
+  Router1 (officerouter) at 280,300 [locked]
+    {"ifaces":{"Gi0/0":{"mode":"dhcp","ip":"","mask":"","gw":"","dns":""},"Gi0/1":{"ip":"","mask":"","dhcp":{"enabled":false,"start":"","end":"","dns":""}},"Gi0/2":{"ip":"","mask":"","dhcp":{"enabled":false,"start":"","end":"","dns":""}},"Gi0/3":{"ip":"","mask":"","dhcp":{"enabled":false,"start":"","end":"","dns":""}}},"nat":true,"dnsProxy":false,"portForwards":[],"acl":[]}
+  Office-SW (switch) at 540,170 [locked]
+    {}
+  Office-PC (pc) at 800,170 [locked, tag office]
+    {"mode":"dhcp","ip":"","mask":"","gw":"","dns":""}
+  Lab-SW (switch) at 540,430 [locked]
+    {}
+  Lab-PC (pc) at 800,430 [locked, tag lab]
+    {"mode":"dhcp","ip":"","mask":"","gw":"","dns":""}
+  Internet1:ISP – Router1:Gi0/0 (locked)
+  Router1:Gi0/1 – Office-SW:P1 (locked)
+  Office-SW:P2 – Office-PC:eth0 (locked)
+  Router1:Gi0/2 – Lab-SW:P1 (locked)
+  Lab-SW:P2 – Lab-PC:eth0 (locked)
+
+Level 11: subnetting
+  Subnet helper opens on 172.16.5.0
+  Internet1 (internet) at 90,300 [locked]
+    {}
+  Router1 (officerouter) at 280,300 [locked]
+    {"ifaces":{"Gi0/0":{"mode":"dhcp","ip":"","mask":"","gw":"","dns":""},"Gi0/1":{"ip":"","mask":"","dhcp":{"enabled":false,"start":"","end":"","dns":""}},"Gi0/2":{"ip":"","mask":"","dhcp":{"enabled":false,"start":"","end":"","dns":""}},"Gi0/3":{"ip":"","mask":"","dhcp":{"enabled":false,"start":"","end":"","dns":""}}},"nat":true,"dnsProxy":false,"portForwards":[],"acl":[]}
+  Sales-SW (switch) at 540,110 [locked]
+    {}
+  Sales-PC (pc) at 800,110 [locked, tag sales]
+    {"mode":"dhcp","ip":"","mask":"","gw":"","dns":""}
+  Engineering-SW (switch) at 540,300 [locked]
+    {}
+  Engineering-PC (pc) at 800,300 [locked, tag eng]
+    {"mode":"dhcp","ip":"","mask":"","gw":"","dns":""}
+  Management-SW (switch) at 540,490 [locked]
+    {}
+  Management-PC (pc) at 800,490 [locked, tag mgmt]
+    {"mode":"dhcp","ip":"","mask":"","gw":"","dns":""}
+  Internet1:ISP – Router1:Gi0/0 (locked)
+  Router1:Gi0/1 – Sales-SW:P1 (locked)
+  Sales-SW:P2 – Sales-PC:eth0 (locked)
+  Router1:Gi0/2 – Engineering-SW:P1 (locked)
+  Engineering-SW:P2 – Engineering-PC:eth0 (locked)
+  Router1:Gi0/3 – Management-SW:P1 (locked)
+  Management-SW:P2 – Management-PC:eth0 (locked)
+
+Level 12: fileserver
+  toolbox {"server":1}; new computers start as none
+  Internet1 (internet) at 90,300 [locked]
+    {}
+  Router1 (officerouter) at 280,300 [locked]
+    {"ifaces":{"Gi0/0":{"mode":"dhcp","ip":"","mask":"","gw":"","dns":""},"Gi0/1":{"ip":"10.1.10.1","mask":"255.255.255.0","dhcp":{"enabled":true,"start":"10.1.10.100","end":"10.1.10.199","dns":"10.1.99.53"}},"Gi0/2":{"ip":"10.1.20.1","mask":"255.255.255.0","dhcp":{"enabled":true,"start":"10.1.20.100","end":"10.1.20.199","dns":"10.1.99.53"}},"Gi0/3":{"ip":"","mask":"","dhcp":{"enabled":false,"start":"","end":"","dns":""}}},"nat":true,"dnsProxy":false,"portForwards":[],"acl":[]}
+  Sales-SW (switch) at 520,100 [locked]
+    {}
+  Sales-PC (pc) at 780,100 [locked, tag sales]
+    {"mode":"dhcp","ip":"","mask":"","gw":"","dns":""}
+  HR-SW (switch) at 520,300 [locked]
+    {}
+  HR-PC (pc) at 780,300 [locked, tag hr]
+    {"mode":"dhcp","ip":"","mask":"","gw":"","dns":""}
+  Servers-SW (switch) at 520,480 [locked]
+    {}
+  DNS1 (server) at 780,410 [locked, tag dns1]
+    {"mode":"static","ip":"10.1.99.53","mask":"255.255.255.0","gw":"10.1.99.1","dns":"8.8.8.8","services":{"web":false,"files":false,"dns":true,"ssh":false},"dnsRecords":[{"name":"dns1.office","ip":"10.1.99.53"}],"sshAllow":""}
+  Internet1:ISP – Router1:Gi0/0 (locked)
+  Router1:Gi0/1 – Sales-SW:P1 (locked)
+  Sales-SW:P2 – Sales-PC:eth0 (locked)
+  Router1:Gi0/2 – HR-SW:P1 (locked)
+  HR-SW:P2 – HR-PC:eth0 (locked)
+  Router1:Gi0/3 – Servers-SW:P1 (locked)
+  Servers-SW:P2 – DNS1:eth0 (locked)
+
+Level 13: ports
+  Internet1 (internet) at 90,300 [locked]
+    {}
+  Router1 (officerouter) at 280,300 [locked]
+    {"ifaces":{"Gi0/0":{"mode":"dhcp","ip":"","mask":"","gw":"","dns":""},"Gi0/1":{"ip":"10.1.10.1","mask":"255.255.255.0","dhcp":{"enabled":true,"start":"10.1.10.100","end":"10.1.10.199","dns":"10.1.99.53"}},"Gi0/2":{"ip":"10.1.20.1","mask":"255.255.255.0","dhcp":{"enabled":true,"start":"10.1.20.100","end":"10.1.20.199","dns":"10.1.99.53"}},"Gi0/3":{"ip":"10.1.99.1","mask":"255.255.255.0","dhcp":{"enabled":false,"start":"","end":"","dns":""}}},"nat":true,"dnsProxy":false,"portForwards":[],"acl":[]}
+  Sales-SW (switch) at 520,100 [locked]
+    {}
+  Sales-PC (pc) at 780,100 [locked, tag sales]
+    {"mode":"dhcp","ip":"","mask":"","gw":"","dns":""}
+  HR-SW (switch) at 520,300 [locked]
+    {}
+  HR-PC (pc) at 780,300 [locked, tag hr]
+    {"mode":"dhcp","ip":"","mask":"","gw":"","dns":""}
+  Servers-SW (switch) at 520,480 [locked]
+    {}
+  DNS1 (server) at 780,410 [locked, tag dns1]
+    {"mode":"static","ip":"10.1.99.53","mask":"255.255.255.0","gw":"10.1.99.1","dns":"8.8.8.8","services":{"web":false,"files":false,"dns":true,"ssh":false},"dnsRecords":[{"name":"dns1.office","ip":"10.1.99.53"},{"name":"files.office","ip":"10.1.99.20"},{"name":"intranet.office","ip":"10.1.99.20"}],"sshAllow":""}
+  FS1 (server) at 780,530 [locked, tag fs]
+    {"mode":"static","ip":"10.1.99.20","mask":"255.255.255.0","gw":"10.1.99.1","dns":"10.1.99.53","services":{"web":true,"files":false,"dns":false,"ssh":false},"dnsRecords":[],"sshAllow":""}
+  Internet1:ISP – Router1:Gi0/0 (locked)
+  Router1:Gi0/1 – Sales-SW:P1 (locked)
+  Sales-SW:P2 – Sales-PC:eth0 (locked)
+  Router1:Gi0/2 – HR-SW:P1 (locked)
+  HR-SW:P2 – HR-PC:eth0 (locked)
+  Router1:Gi0/3 – Servers-SW:P1 (locked)
+  Servers-SW:P2 – DNS1:eth0 (locked)
+  Servers-SW:P3 – FS1:eth0 (locked)
+
+Level 14: acl
+  features {"acl":true}
+  Internet1 (internet) at 90,300 [locked]
+    {}
+  Router1 (officerouter) at 280,300 [locked]
+    {"ifaces":{"Gi0/0":{"mode":"dhcp","ip":"","mask":"","gw":"","dns":""},"Gi0/1":{"ip":"10.1.10.1","mask":"255.255.255.0","dhcp":{"enabled":true,"start":"10.1.10.100","end":"10.1.10.199","dns":"10.1.99.53"}},"Gi0/2":{"ip":"10.1.20.1","mask":"255.255.255.0","dhcp":{"enabled":true,"start":"10.1.20.100","end":"10.1.20.199","dns":"10.1.99.53"}},"Gi0/3":{"ip":"10.1.99.1","mask":"255.255.255.0","dhcp":{"enabled":false,"start":"","end":"","dns":""}}},"nat":true,"dnsProxy":false,"portForwards":[],"acl":[]}
+  Sales-SW (switch) at 520,100 [locked]
+    {}
+  Sales-PC (pc) at 780,100 [locked, tag sales]
+    {"mode":"dhcp","ip":"","mask":"","gw":"","dns":""}
+  HR-SW (switch) at 520,300 [locked]
+    {}
+  HR-PC (pc) at 780,300 [locked, tag hr]
+    {"mode":"dhcp","ip":"","mask":"","gw":"","dns":""}
+  Servers-SW (switch) at 520,480 [locked]
+    {}
+  DNS1 (server) at 780,410 [locked, tag dns1]
+    {"mode":"static","ip":"10.1.99.53","mask":"255.255.255.0","gw":"10.1.99.1","dns":"8.8.8.8","services":{"web":false,"files":false,"dns":true,"ssh":false},"dnsRecords":[{"name":"dns1.office","ip":"10.1.99.53"},{"name":"files.office","ip":"10.1.99.20"},{"name":"intranet.office","ip":"10.1.99.20"},{"name":"hr.office","ip":"10.1.99.30"}],"sshAllow":""}
+  FS1 (server) at 780,530 [locked, tag fs]
+    {"mode":"static","ip":"10.1.99.20","mask":"255.255.255.0","gw":"10.1.99.1","dns":"10.1.99.53","services":{"web":true,"files":true,"dns":false,"ssh":false},"dnsRecords":[],"sshAllow":""}
+  HR-FS (server) at 340,530 [locked, settings locked, tag hrfs]
+    {"mode":"static","ip":"10.1.99.30","mask":"255.255.255.0","gw":"10.1.99.1","dns":"10.1.99.53","services":{"web":false,"files":true,"dns":false,"ssh":false},"dnsRecords":[],"sshAllow":""}
+  Internet1:ISP – Router1:Gi0/0 (locked)
+  Router1:Gi0/1 – Sales-SW:P1 (locked)
+  Sales-SW:P2 – Sales-PC:eth0 (locked)
+  Router1:Gi0/2 – HR-SW:P1 (locked)
+  HR-SW:P2 – HR-PC:eth0 (locked)
+  Router1:Gi0/3 – Servers-SW:P1 (locked)
+  Servers-SW:P2 – DNS1:eth0 (locked)
+  Servers-SW:P3 – FS1:eth0 (locked)
+  Servers-SW:P4 – HR-FS:eth0 (locked)
+
+Level 15: acl-troubleshoot
+  features {"acl":true}
+  Internet1 (internet) at 90,300 [locked]
+    {}
+  Router1 (officerouter) at 280,300 [locked]
+    {"ifaces":{"Gi0/0":{"mode":"dhcp","ip":"","mask":"","gw":"","dns":""},"Gi0/1":{"ip":"10.1.10.1","mask":"255.255.255.0","dhcp":{"enabled":true,"start":"10.1.10.100","end":"10.1.10.199","dns":"10.1.99.53"}},"Gi0/2":{"ip":"10.1.20.1","mask":"255.255.255.0","dhcp":{"enabled":true,"start":"10.1.20.100","end":"10.1.20.199","dns":"10.1.99.53"}},"Gi0/3":{"ip":"10.1.99.1","mask":"255.255.255.0","dhcp":{"enabled":false,"start":"","end":"","dns":""}}},"nat":true,"dnsProxy":false,"portForwards":[],"acl":[{"action":"permit","src":"10.1.0.0/16","dst":"10.1.99.30","proto":"tcp","port":"445"},{"action":"deny","src":"any","dst":"10.1.99.30","proto":"any","port":""},{"action":"deny","src":"any","dst":"10.1.99.0/24","proto":"any","port":""},{"action":"permit","src":"any","dst":"10.1.99.20","proto":"tcp","port":"80"},{"action":"permit","src":"any","dst":"10.1.99.53","proto":"udp","port":"53"},{"action":"deny","src":"10.1.10.0/24","dst":"10.1.20.0/24","proto":"any","port":""}]}
+  Sales-SW (switch) at 520,100 [locked]
+    {}
+  Sales-PC (pc) at 780,100 [locked, tag sales]
+    {"mode":"dhcp","ip":"","mask":"","gw":"","dns":""}
+  HR-SW (switch) at 520,300 [locked]
+    {}
+  HR-PC (pc) at 780,300 [locked, tag hr]
+    {"mode":"dhcp","ip":"","mask":"","gw":"","dns":""}
+  Servers-SW (switch) at 520,480 [locked]
+    {}
+  DNS1 (server) at 780,410 [locked, tag dns1]
+    {"mode":"static","ip":"10.1.99.53","mask":"255.255.255.0","gw":"10.1.99.1","dns":"8.8.8.8","services":{"web":false,"files":false,"dns":true,"ssh":false},"dnsRecords":[{"name":"dns1.office","ip":"10.1.99.53"},{"name":"files.office","ip":"10.1.99.20"},{"name":"intranet.office","ip":"10.1.99.20"},{"name":"hr.office","ip":"10.1.99.30"}],"sshAllow":""}
+  FS1 (server) at 780,530 [locked, tag fs]
+    {"mode":"static","ip":"10.1.99.20","mask":"255.255.255.0","gw":"10.1.99.1","dns":"10.1.99.53","services":{"web":true,"files":true,"dns":false,"ssh":false},"dnsRecords":[],"sshAllow":""}
+  HR-FS (server) at 340,530 [locked, settings locked, tag hrfs]
+    {"mode":"static","ip":"10.1.99.30","mask":"255.255.255.0","gw":"10.1.99.1","dns":"10.1.99.53","services":{"web":false,"files":true,"dns":false,"ssh":false},"dnsRecords":[],"sshAllow":""}
+  Internet1:ISP – Router1:Gi0/0 (locked)
+  Router1:Gi0/1 – Sales-SW:P1 (locked)
+  Sales-SW:P2 – Sales-PC:eth0 (locked)
+  Router1:Gi0/2 – HR-SW:P1 (locked)
+  HR-SW:P2 – HR-PC:eth0 (locked)
+  Router1:Gi0/3 – Servers-SW:P1 (locked)
+  Servers-SW:P2 – DNS1:eth0 (locked)
+  Servers-SW:P3 – FS1:eth0 (locked)
+  Servers-SW:P4 – HR-FS:eth0 (locked)
+
+Level 16: guests
+  features {"acl":true}
+  Internet1 (internet) at 90,300 [locked]
+    {}
+  Router1 (officerouter) at 280,300 [locked]
+    {"ifaces":{"Gi0/0":{"mode":"dhcp","ip":"","mask":"","gw":"","dns":""},"Gi0/1":{"ip":"10.1.10.1","mask":"255.255.255.0","dhcp":{"enabled":true,"start":"10.1.10.100","end":"10.1.10.199","dns":"10.1.99.53"}},"Gi0/2":{"ip":"10.1.50.1","mask":"255.255.255.0","dhcp":{"enabled":true,"start":"10.1.50.100","end":"10.1.50.199","dns":"10.1.99.53"}},"Gi0/3":{"ip":"10.1.99.1","mask":"255.255.255.0","dhcp":{"enabled":false,"start":"","end":"","dns":""}}},"nat":true,"dnsProxy":false,"portForwards":[],"acl":[]}
+  Staff-SW (switch) at 520,100 [locked]
+    {}
+  Guest-SW (switch) at 520,300 [locked]
+    {}
+  Servers-SW (switch) at 520,480 [locked]
+    {}
+  Staff-PC (pc) at 780,100 [locked, tag staff]
+    {"mode":"dhcp","ip":"","mask":"","gw":"","dns":""}
+  Guest-Laptop (laptop) at 780,300 [locked, tag guest]
+    {"mode":"dhcp","ip":"","mask":"","gw":"","dns":""}
+  DNS1 (server) at 780,410 [locked, tag dns1]
+    {"mode":"static","ip":"10.1.99.53","mask":"255.255.255.0","gw":"10.1.99.1","dns":"8.8.8.8","services":{"web":false,"files":false,"dns":true,"ssh":false},"dnsRecords":[{"name":"files.office","ip":"10.1.99.20"},{"name":"intranet.office","ip":"10.1.99.20"}],"sshAllow":""}
+  FS1 (server) at 780,530 [locked, settings locked, tag fs]
+    {"mode":"static","ip":"10.1.99.20","mask":"255.255.255.0","gw":"10.1.99.1","dns":"10.1.99.53","services":{"web":true,"files":true,"dns":false,"ssh":false},"dnsRecords":[],"sshAllow":""}
+  Internet1:ISP – Router1:Gi0/0 (locked)
+  Router1:Gi0/1 – Staff-SW:P1 (locked)
+  Router1:Gi0/2 – Guest-SW:P1 (locked)
+  Router1:Gi0/3 – Servers-SW:P1 (locked)
+  Staff-SW:P2 – Staff-PC:eth0 (locked)
+  Guest-SW:P2 – Guest-Laptop:eth0 (locked)
+  Servers-SW:P2 – DNS1:eth0 (locked)
+  Servers-SW:P3 – FS1:eth0 (locked)
+
+Level 17: dmz
+  features {"acl":true,"portForward":true}
+  Internet1 (internet) at 90,300 [locked]
+    {}
+  Router1 (officerouter) at 280,300 [locked]
+    {"ifaces":{"Gi0/0":{"mode":"dhcp","ip":"","mask":"","gw":"","dns":""},"Gi0/1":{"ip":"10.1.10.1","mask":"255.255.255.0","dhcp":{"enabled":true,"start":"10.1.10.100","end":"10.1.10.199","dns":"10.1.99.53"}},"Gi0/2":{"ip":"10.1.99.1","mask":"255.255.255.0","dhcp":{"enabled":false,"start":"","end":"","dns":""}},"Gi0/3":{"ip":"","mask":"","dhcp":{"enabled":false,"start":"","end":"","dns":""}}},"nat":true,"dnsProxy":false,"portForwards":[{"proto":"tcp","port":"80","ip":"10.1.99.80","toPort":"80"}],"acl":[]}
+  Staff-SW (switch) at 520,100 [locked]
+    {}
+  Servers-SW (switch) at 520,300 [locked]
+    {}
+  DMZ-SW (switch) at 520,500 [locked]
+    {}
+  Staff-PC (pc) at 780,100 [locked, tag staff]
+    {"mode":"dhcp","ip":"","mask":"","gw":"","dns":""}
+  DNS1 (server) at 780,230 [locked, tag dns1]
+    {"mode":"static","ip":"10.1.99.53","mask":"255.255.255.0","gw":"10.1.99.1","dns":"8.8.8.8","services":{"web":false,"files":false,"dns":true,"ssh":false},"dnsRecords":[{"name":"files.office","ip":"10.1.99.20"},{"name":"shop.office","ip":"10.1.99.80"}],"sshAllow":""}
+  FS1 (server) at 780,340 [locked, settings locked, tag fs]
+    {"mode":"static","ip":"10.1.99.20","mask":"255.255.255.0","gw":"10.1.99.1","dns":"10.1.99.53","services":{"web":false,"files":true,"dns":false,"ssh":false},"dnsRecords":[],"sshAllow":""}
+  WebServer (server) at 780,470 [locked, tag web]
+    {"mode":"static","ip":"10.1.99.80","mask":"255.255.255.0","gw":"10.1.99.1","dns":"10.1.99.53","services":{"web":true,"files":false,"dns":false,"ssh":false},"dnsRecords":[],"sshAllow":""}
+  Internet1:ISP – Router1:Gi0/0 (locked)
+  Router1:Gi0/1 – Staff-SW:P1 (locked)
+  Router1:Gi0/2 – Servers-SW:P1 (locked)
+  Router1:Gi0/3 – DMZ-SW:P1 (locked)
+  Staff-SW:P2 – Staff-PC:eth0 (locked)
+  Servers-SW:P2 – DNS1:eth0 (locked)
+  Servers-SW:P3 – FS1:eth0 (locked)
+  Servers-SW:P4 – WebServer:eth0
+
+Level 18: vlans
+  Internet1 (internet) at 90,330 [locked]
+    {}
+  Router1 (officerouter) at 280,330 [locked]
+    {"ifaces":{"Gi0/0":{"mode":"dhcp","ip":"","mask":"","gw":"","dns":""},"Gi0/1":{"ip":"10.1.10.1","mask":"255.255.255.0","dhcp":{"enabled":true,"start":"10.1.10.100","end":"10.1.10.199","dns":"8.8.8.8"}},"Gi0/2":{"ip":"10.1.20.1","mask":"255.255.255.0","dhcp":{"enabled":true,"start":"10.1.20.100","end":"10.1.20.199","dns":"8.8.8.8"}},"Gi0/3":{"ip":"","mask":"","dhcp":{"enabled":false,"start":"","end":"","dns":""}}},"nat":true,"dnsProxy":false,"portForwards":[],"acl":[]}
+  Floor1-SW (mswitch) at 540,190 [locked]
+    {"ports":{}}
+  Floor2-SW (mswitch) at 540,470 [locked]
+    {"ports":{}}
+  Sales-PC1 (pc) at 800,90 [locked, tag sales1]
+    {"mode":"dhcp","ip":"","mask":"","gw":"","dns":""}
+  HR-PC1 (laptop) at 800,260 [locked, tag hr1]
+    {"mode":"dhcp","ip":"","mask":"","gw":"","dns":""}
+  Sales-PC2 (pc) at 800,400 [locked, tag sales2]
+    {"mode":"dhcp","ip":"","mask":"","gw":"","dns":""}
+  HR-PC2 (laptop) at 800,560 [locked, tag hr2]
+    {"mode":"dhcp","ip":"","mask":"","gw":"","dns":""}
+  Internet1:ISP – Router1:Gi0/0 (locked)
+  Router1:Gi0/1 – Floor1-SW:P1 (locked)
+  Router1:Gi0/2 – Floor1-SW:P2 (locked)
+  Floor1-SW:P8 – Floor2-SW:P8 (locked)
+  Floor1-SW:P3 – Sales-PC1:eth0 (locked)
+  Floor1-SW:P4 – HR-PC1:eth0 (locked)
+  Floor2-SW:P3 – Sales-PC2:eth0 (locked)
+  Floor2-SW:P4 – HR-PC2:eth0 (locked)
+
+Level 19: vms
+  Internet1 (internet) at 90,300 [locked]
+    {}
+  Router1 (homerouter) at 270,300 [locked, settings locked]
+    {"ifaces":{"WAN":{"mode":"dhcp","ip":"","mask":"","gw":"","dns":""},"LAN":{"ip":"192.168.1.1","mask":"255.255.255.0","dhcp":{"enabled":true,"start":"192.168.1.100","end":"192.168.1.199","dns":"192.168.1.1"}}},"nat":true,"dnsProxy":true,"portForwards":[]}
+  Switch1 (switch) at 460,300 [locked]
+    {}
+  Colleague-PC (pc) at 680,120 [locked, tag colleague]
+    {"mode":"dhcp","ip":"","mask":"","gw":"","dns":""}
+  DevLaptop (vmhost) at 640,400 [locked, tag laptop]
+    {"ifaces":{"eth0":{"mode":"dhcp","ip":"","mask":"","gw":"","dns":""},"NAT":{"ip":"10.0.2.2","mask":"255.255.255.0","dhcp":{"enabled":true,"start":"10.0.2.15","end":"10.0.2.30","dns":"8.8.8.8"}},"Host-only":{"ip":"192.168.56.1","mask":"255.255.255.0","dhcp":{"enabled":true,"start":"192.168.56.101","end":"192.168.56.199","dns":""}}},"nat":true,"dnsProxy":false,"portForwards":[],"acl":[]}
+  WebVM (vm) at 880,300 [locked, tag webvm]
+    {"mode":"dhcp","ip":"","mask":"","gw":"","dns":"","services":{"web":true,"files":false,"dns":false,"ssh":false},"dnsRecords":[],"sshAllow":""}
+  TestVM (vm) at 880,500 [locked, tag testvm]
+    {"mode":"dhcp","ip":"","mask":"","gw":"","dns":"","services":{"web":false,"files":false,"dns":false,"ssh":false},"dnsRecords":[],"sshAllow":""}
+  Internet1:ISP – Router1:WAN (locked)
+  Router1:LAN1 – Switch1:P1 (locked)
+  Switch1:P2 – Colleague-PC:eth0 (locked)
+  Switch1:P3 – DevLaptop:eth0 (locked)
+  DevLaptop:nat1 – WebVM:eth0 (locked)
+  DevLaptop:nat2 – TestVM:eth0 (locked)
+
+Level 20: ssh
+  features {"acl":true}
+  Internet1 (internet) at 90,300 [locked]
+    {}
+  Router1 (officerouter) at 280,300 [locked]
+    {"ifaces":{"Gi0/0":{"mode":"dhcp","ip":"","mask":"","gw":"","dns":""},"Gi0/1":{"ip":"10.1.10.1","mask":"255.255.255.0","dhcp":{"enabled":true,"start":"10.1.10.100","end":"10.1.10.199","dns":"10.1.99.53"}},"Gi0/2":{"ip":"10.1.30.1","mask":"255.255.255.0","dhcp":{"enabled":true,"start":"10.1.30.100","end":"10.1.30.199","dns":"10.1.99.53"}},"Gi0/3":{"ip":"10.1.99.1","mask":"255.255.255.0","dhcp":{"enabled":false,"start":"","end":"","dns":""}}},"nat":true,"dnsProxy":false,"portForwards":[],"acl":[{"action":"permit","src":"any","dst":"10.1.99.20","proto":"tcp","port":"445"},{"action":"permit","src":"any","dst":"10.1.99.53","proto":"udp","port":"53"},{"action":"permit","src":"any","dst":"10.1.99.0/24","proto":"tcp","port":"22"},{"action":"deny","src":"any","dst":"10.1.99.0/24","proto":"any","port":""},{"action":"permit","src":"any","dst":"any","proto":"any","port":""}]}
+  Staff-SW (switch) at 520,100 [locked]
+    {}
+  IT-SW (switch) at 520,280 [locked]
+    {}
+  Servers-SW (switch) at 520,470 [locked]
+    {}
+  Staff-PC (pc) at 780,100 [locked, tag staff]
+    {"mode":"dhcp","ip":"","mask":"","gw":"","dns":""}
+  IT-Laptop (laptop) at 780,280 [locked, tag it]
+    {"mode":"dhcp","ip":"","mask":"","gw":"","dns":""}
+  Jump1 (server) at 780,400 [locked, tag jump]
+    {"mode":"static","ip":"10.1.99.10","mask":"255.255.255.0","gw":"10.1.99.1","dns":"10.1.99.53","services":{"web":false,"files":false,"dns":false,"ssh":true},"dnsRecords":[],"sshAllow":""}
+  FS1 (server) at 780,535 [locked, tag fs]
+    {"mode":"static","ip":"10.1.99.20","mask":"255.255.255.0","gw":"10.1.99.1","dns":"10.1.99.53","services":{"web":false,"files":true,"dns":false,"ssh":true},"dnsRecords":[],"sshAllow":""}
+  DNS1 (server) at 340,530 [locked, tag dns1]
+    {"mode":"static","ip":"10.1.99.53","mask":"255.255.255.0","gw":"10.1.99.1","dns":"8.8.8.8","services":{"web":false,"files":false,"dns":true,"ssh":true},"dnsRecords":[{"name":"jump1.office","ip":"10.1.99.10"},{"name":"fs1.office","ip":"10.1.99.20"},{"name":"files.office","ip":"10.1.99.20"},{"name":"dns1.office","ip":"10.1.99.53"}],"sshAllow":""}
+  Internet1:ISP – Router1:Gi0/0 (locked)
+  Router1:Gi0/1 – Staff-SW:P1 (locked)
+  Router1:Gi0/2 – IT-SW:P1 (locked)
+  Router1:Gi0/3 – Servers-SW:P1 (locked)
+  Staff-SW:P2 – Staff-PC:eth0 (locked)
+  IT-SW:P2 – IT-Laptop:eth0 (locked)
+  Servers-SW:P2 – Jump1:eth0 (locked)
+  Servers-SW:P3 – FS1:eth0 (locked)
+  Servers-SW:P4 – DNS1:eth0 (locked)
+
+`;
+
+exports[`level 1 (dhcp): starts unfinished, model solution completes it with a clean review 1`] = `
+
+start                                        ······   verify: -----·
+PC1: mode dhcp                               ✓✓✓✓··   verify: -----✓
+ipconfig(PC1)                                ✓✓✓✓✓·   verify: -----✓
+ping(PC1, 8.8.8.8)                           ✓✓✓✓✓✓   verify: -----✓
+
+`;
+
+exports[`level 10 (subnet-halves): starts unfinished, model solution completes it with a clean review 1`] = `
+
+start                                        ·····   verify: -----
+router: Gi0/1, Gi0/2 configured              ✓✓✓✓✓   verify: -----
+
+`;
+
+exports[`level 11 (subnetting): starts unfinished, model solution completes it with a clean review 1`] = `
+
+start                                        ······   verify: ------
+router: Gi0/1, Gi0/2, Gi0/3 configured       ✓✓✓✓✓✓   verify: ------
+
+`;
+
+exports[`level 12 (fileserver): starts unfinished, model solution completes it with a clean review 1`] = `
+
+start                                        ········   verify: -------·
+router: Gi0/3 configured                     ✓✓······   verify: -------·
+Server1: ip 10.1.99.20, mask 255.255.255.0, gw 10.1.99.1, dns 10.1.99.53 ✓✓✓✓····   verify: -------·
+Server1: file sharing on, DNS record files.office ✓✓✓✓✓✓✓·   verify: -------✓
+open(sales, \\\\files.office)                  ✓✓✓✓✓✓✓·   verify: -------✓
+open(hr, \\\\files.office)                     ✓✓✓✓✓✓✓✓   verify: -------✓
+
+`;
+
+exports[`level 13 (ports): starts unfinished, model solution completes it with a clean review 1`] = `
+
+start                                        ·······   verify: ✓----·-
+browse(sales, intranet.office)               ✓······   verify: ✓----·-
+open(sales, \\\\files.office)                  ✓✓·····   verify: ✓----·-
+test(sales, files.office, 80)                ✓✓·····   verify: ✓----·-
+test(sales, files.office, 445)               ✓✓✓····   verify: ✓----·-
+netstat(fs)                                  ✓✓✓✓···   verify: ✓----·-
+FS1: file sharing on, DNS record wiki.office ✓✓✓✓✓·✓   verify: ✓----✓-
+browse(sales, wiki.office)                   ✓✓✓✓✓✓✓   verify: ✓----✓-
+
+`;
+
+exports[`level 14 (acl): starts unfinished, model solution completes it with a clean review 1`] = `
+
+start                                        ··✓✓✓·   verify: -----·
+open(sales, \\\\hr.office)                     ✓·✓✓✓·   verify: -----·
+access rules: 3 rules                        ✓✓✓✓✓·   verify: -----✓
+test(sales, hr.office, 445)                  ✓✓✓✓✓✓   verify: -----✓
+
+`;
+
+exports[`level 15 (acl-troubleshoot): starts unfinished, model solution completes it with a clean review 1`] = `
+
+start                                        ·····✓   verify: ------
+access rules: 7 rules                        ✓✓✓✓✓✓   verify: ------
+
+`;
+
+exports[`level 16 (guests): starts unfinished, model solution completes it with a clean review 1`] = `
+
+start                                        ···✓·✓   verify: ------
+open(guest, \\\\files.office)                  ✓··✓·✓   verify: ------
+access rules: 2 rules                        ✓✓✓··✓   verify: ------
+router: Gi0/2 configured                     ✓✓✓✓✓✓   verify: ------
+
+`;
+
+exports[`level 17 (dmz): starts unfinished, model solution completes it with a clean review 1`] = `
+
+start                                        ···✓··✓·   verify: -------·
+open(web, \\\\10.1.99.20)                      ✓··✓··✓·   verify: -------·
+router: Gi0/3 configured                     ✓✓·✓··✓·   verify: -------·
+web: ip 10.1.200.80, gw 10.1.200.1, dns 8.8.8.8 ✓✓✓···✓·   verify: -------·
+access rules: 2 rules                        ✓✓✓✓✓✓✓·   verify: -------✓
+test(web, 10.1.99.20, 445)                   ✓✓✓✓✓✓✓✓   verify: -------✓
+
+`;
+
+exports[`level 18 (vlans): starts unfinished, model solution completes it with a clean review 1`] = `
+
+start                                        ····✓·   verify: -----✓
+ipconfig(hr1)                                ✓···✓·   verify: -----✓
+switch ports: VLANs 10/20, trunk on P8       ✓✓✓✓✓·   verify: -----✓
+ping(sales2, 10.1.20.100)                    ✓✓✓✓✓✓   verify: -----✓
+
+`;
+
+exports[`level 19 (vms): starts unfinished, model solution completes it with a clean review 1`] = `
+
+start                                        ·······   verify: ✓--·--✓
+browse(webvm, www.example.com)               ✓······   verify: ✓--·--✓
+browse(colleague, 10.0.2.15)                 ✓✓·····   verify: ✓--·--✓
+webvm: network adapter → br1                 ✓✓✓····   verify: ✓--✓--✓
+browse(colleague, 192.168.1.102)             ✓✓✓✓···   verify: ✓--✓--✓
+testvm: network adapter → ho1                ✓✓✓✓✓··   verify: ✓--✓--✓
+ping(testvm, 8.8.8.8)                        ✓✓✓✓✓✓·   verify: ✓--✓--✓
+ping(laptop, 192.168.56.101)                 ✓✓✓✓✓✓✓   verify: ✓--✓--✓
+
+`;
+
+exports[`level 2 (static): starts unfinished, model solution completes it with a clean review 1`] = `
+
+start                                        ········   verify: ------··
+ipconfig(pc1)                                ✓·······   verify: ------··
+pc1: mode static, ip 192.168.1.50, mask 255.255.255.0, gw 192.168.1.1, dns 8.8.8.8 ✓✓✓✓✓✓··   verify: ------✓✓
+ping(pc1, 192.168.1.1)                       ✓✓✓✓✓✓✓·   verify: ------✓✓
+ping(pc1, 8.8.8.8)                           ✓✓✓✓✓✓✓✓   verify: ------✓✓
+
+`;
+
+exports[`level 20 (ssh): starts unfinished, model solution completes it with a clean review 1`] = `
+
+start                                        ····✓   verify: ---✓-
+ssh(staff, fs1.office)                       ✓···✓   verify: ---✓-
+access rules: 5 rules                        ✓✓··✓   verify: ---✓-
+fs: sshAllow 10.1.99.10                      ✓✓··✓   verify: ---✓-
+dns1: sshAllow 10.1.99.10                    ✓✓✓·✓   verify: ---✓-
+jump: sshAllow 10.1.30.0/24                  ✓✓✓·✓   verify: ---✓-
+ssh(it, jump1.office)                        ✓✓✓·✓   verify: ---✓-
+ssh(jump, fs1.office)                        ✓✓✓✓✓   verify: ---✓-
+
+`;
+
+exports[`level 3 (switch): starts unfinished, model solution completes it with a clean review 1`] = `
+
+start                                        ·······   verify: -------
+Server1: ip 192.168.1.10, mask 255.255.255.0, gw 192.168.1.1, dns 8.8.8.8 ✓✓✓✓✓✓·   verify: -------
+ping(PC1, 192.168.1.10)                      ✓✓✓✓✓✓✓   verify: -------
+
+`;
+
+exports[`level 4 (router): starts unfinished, model solution completes it with a clean review 1`] = `
+
+start                                        ······   verify: ------
+router: LAN configured                       ✓✓✓✓✓·   verify: ------
+ipconfig(PC1)                                ✓✓✓✓✓✓   verify: ------
+
+`;
+
+exports[`level 5 (dns): starts unfinished, model solution completes it with a clean review 1`] = `
+
+start                                        ······   verify: ✓-✓-··
+ping(pc1, 8.8.8.8)                           ✓·····   verify: ✓-✓-··
+browse(pc1, www.example.com)                 ✓✓····   verify: ✓-✓-··
+nslookup(pc2, www.example.com)               ✓✓✓···   verify: ✓-✓-··
+pc1: dns 8.8.8.8                             ✓✓✓✓··   verify: ✓-✓-✓✓
+browse(pc1, www.example.com)                 ✓✓✓✓✓·   verify: ✓-✓-✓✓
+ping(pc1, www.example.com)                   ✓✓✓✓✓✓   verify: ✓-✓-✓✓
+
+`;
+
+exports[`level 6 (subnets): starts unfinished, model solution completes it with a clean review 1`] = `
+
+start                                        ·······   verify: ------·
+router: Gi0/1, Gi0/2 configured              ✓✓✓····   verify: ------·
+two switches, two PCs, two laptops cabled    ✓✓✓✓✓✓·   verify: ------✓
+ping(PC1, 192.168.20.100)                    ✓✓✓✓✓✓✓   verify: ------✓
+
+`;
+
+exports[`level 7 (troubleshoot): starts unfinished, model solution completes it with a clean review 1`] = `
+
+start                                        ·······   verify: -------
+reception: gw 192.168.1.1                    ✓······   verify: -------
+accounts: ip 192.168.1.21                    ✓✓·····   verify: -------
+design: mask 255.255.255.0                   ✓✓✓····   verify: -------
+sales: dns 8.8.8.8                           ✓✓✓✓···   verify: -------
+manager: ip 192.168.1.45                     ✓✓✓✓✓··   verify: -------
+Switch2 cabled to Switch1                    ✓✓✓✓✓✓✓   verify: -------
+
+`;
+
+exports[`level 8 (portforward): starts unfinished, model solution completes it with a clean review 1`] = `
+
+start                                        ·····   verify: -·--·
+web: gw 192.168.1.1                          ·····   verify: -·--·
+WebServer: web server on                     ✓····   verify: -✓--·
+browse(pc1, 192.168.1.80)                    ✓✓···   verify: -✓--·
+port forward TCP 80 → 192.168.1.80           ✓✓✓✓·   verify: -✓--✓
+visit()                                      ✓✓✓✓✓   verify: -✓--✓
+
+`;
+
+exports[`level 9 (subnet-basics): starts unfinished, model solution completes it with a clean review 1`] = `
+
+start                                        ·······   verify: -------
+subnetHelper(192.168.1.0/25 192.168.1.128/25) ✓✓·····   verify: -------
+subnetHelper(192.168.1.0/26 192.168.1.64/26 192.168.1.128/26 192.168.1.192/26) ✓✓✓····   verify: -------
+subnetHelper(192.168.1.0/26 192.168.1.64/26 192.168.1.128/26 192.168.1.192/26, 2) ✓✓✓✓···   verify: -------
+subnetHelper(192.168.1.0/25 192.168.1.128/26 192.168.1.192/27 192.168.1.224/27) ✓✓✓✓✓··   verify: -------
+subnetHelper(192.168.1.0/25 192.168.1.128/26 192.168.1.192/27 192.168.1.224/30 192.168.1.228/30 192.168.1.232/29 192.168.1.240/28) ✓✓✓✓✓✓·   verify: -------
+subnetHelper(192.168.1.0/24)                 ✓✓✓✓✓✓✓   verify: -------
+
+`;

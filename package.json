@@ -1,0 +1,22 @@
+{
+  "name": "cabletocloud",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A browser game that teaches networking by building it.",
+  "scripts": {
+    "test": "node --test --experimental-test-coverage --test-coverage-include=js/ip.js --test-coverage-include=js/model.js --test-coverage-include=js/sim.js --test-coverage-include=js/levels.js --test-coverage-lines=99 --test-coverage-branches=97 --test-coverage-functions=99 \"test/unit/*.test.js\"",
+    "test:quick": "node --test \"test/unit/*.test.js\"",
+    "test:e2e": "playwright test",
+    "test:all": "npm test && npm run test:e2e",
+    "test:mutation": "stryker run",
+    "test:update-snapshots": "node --test --test-update-snapshots \"test/unit/*.test.js\""
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.0",
+    "@stryker-mutator/core": "^10.0.0",
+    "@stryker-mutator/tap-runner": "^10.0.0"
+  },
+  "overrides": {
+    "qs": "^6.16.0"
+  }
+}

@@ -53,6 +53,7 @@
       { label: 'Restart', cls: 'primary', onClick: () => { G.closeModal(); G.loadLevel(G.levelIndex); } },
     ]);
     $('#btn-hint').onclick = G.nextHint;
+    $('#btn-solution').onclick = G.askSolution;
     $('#btn-subnet').onclick = () => NG.Explorer.open(G.level.explorer || '192.168.1.0');
     $('#btn-sound').onclick = () => {
       G.progress.muted = !G.progress.muted;
@@ -126,15 +127,38 @@
     $('#unlock-all').onchange = e => { G.progress.unlockAll = e.target.checked; saveProgress(); G.showLevels(); };
   };
 
-  G.showWin = function () {
-    const L = G.level, next = NG.Levels[G.levelIndex + 1];
+  // Suggestions on a working solution: things that pass, but could be cleaner or safer.
+  G.reviewNotes = () => NG.Objectives.review(G.level, G.ctx());
+
+  G.showWin = function (quiet) {
+    const L = G.level, next = NG.Levels[G.levelIndex + 1], notes = G.reviewNotes();
     const buttons = [{ label: 'Keep exploring', onClick: G.closeModal }];
+    if (L.solution) buttons.push({ label: 'Model solution', onClick: () => G.showSolution(() => G.showWin(true)) });
     if (next) buttons.push({ label: `Next: ${next.title} →`, cls: 'primary', onClick: () => { G.closeModal(); G.loadLevel(G.levelIndex + 1); } });
-    NG.Fx.win();
-    NG.Fx.confetti();
+    if (!quiet) { NG.Fx.win(); NG.Fx.confetti(); }
     G.modal(`<div class="win"><div class="badge">✓</div><h2>Level complete!</h2><h3>${esc(L.title)}</h3>
+      <div class="review ${notes.length ? 'has-notes' : ''}"><h4>How good is your solution?</h4>
+        ${notes.length ? `<p class="small">Everything required works. A few things could be better:</p><ul>${notes.map(n => `<li>${n}</li>`).join('')}</ul>`
+          : '<p class="small">✓ All requirements met, and nothing to tidy up. That’s as clean as the model solution.</p>'}</div>
       <h4>What you learned</h4>${L.learned}
       ${next ? '' : '<p><b>You’ve finished every level. Congratulations, network engineer!</b></p>'}</div>`, buttons);
+  };
+
+  // back: where "Back" goes (the win screen), otherwise the modal just closes.
+  G.showSolution = function (back) {
+    const L = G.level;
+    G.modal(`<div class="solution"><h2>Model solution</h2><h3>${esc(L.title)}</h3>${L.solution}</div>`,
+      [{ label: back ? '← Back' : 'Close', cls: 'primary', onClick: back || G.closeModal }], 'wide');
+  };
+
+  G.askSolution = function () {
+    if (!G.level.solution) return;
+    if (G.done) { G.showSolution(); return; }
+    G.modal('<h2>Show the solution?</h2><p>This shows the complete answer for this level. The hints give it away more gently, one step at a time.</p>', [
+      { label: 'Cancel', onClick: G.closeModal },
+      { label: 'Next hint instead', onClick: () => { G.closeModal(); G.nextHint(); } },
+      { label: 'Show solution', cls: 'primary', onClick: () => G.showSolution() },
+    ]);
   };
 
   G.externalVisit = async function () {
@@ -207,14 +231,20 @@
     G.checkObjectives();
   };
 
+  G.ctx = () => ({ net: G.net, T: G.T, events: G.events });
+
+  // A step counts only while it still holds (see NG.Objectives.evaluate in levels.js).
   G.checkObjectives = function () {
-    const L = G.level, c = { net: G.net, T: G.T, events: G.events };
-    const res = L.objectives.map(o => { try { return !!o.check(c); } catch (e) { console.warn(e); return false; } });
+    const L = G.level;
+    const { did, ok: res } = NG.Objectives.evaluate(L, G.ctx());
     const prev = G.prevRes;
     const fresh = res.map((r, i) => r && prev && !prev[i]);
     G.prevRes = res;
-    $('#objectives').innerHTML = L.objectives.map((o, i) =>
-      `<li class="${res[i] ? 'done' : ''} ${fresh[i] ? 'just' : ''}"><span class="tick">${res[i] ? '✓' : i + 1}</span><span>${o.text}</span></li>`).join('');
+    $('#objectives').innerHTML = L.objectives.map((o, i) => {
+      const broken = did[i] && !res[i];
+      return `<li class="${res[i] ? 'done' : ''} ${broken ? 'broken' : ''} ${fresh[i] ? 'just' : ''}"><span class="tick">${res[i] ? '✓' : broken ? '!' : i + 1}</span>
+        <span>${o.text}${broken ? '<small class="broken-note">Was done, but a later change broke it. Check it again.</small>' : ''}</span></li>`;
+    }).join('');
     const n = res.filter(Boolean).length;
     $('#obj-progress').textContent = `${n}/${L.objectives.length}`;
     if (fresh.some(Boolean) && n < L.objectives.length) NG.Fx.tick();

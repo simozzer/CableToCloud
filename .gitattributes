@@ -1,0 +1,2 @@
+# Snapshot files are compared character by character: keep their line endings as-is on every platform.
+*.snapshot text eol=lf

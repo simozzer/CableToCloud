@@ -1,0 +1,113 @@
+exports[`every \"Why?\" explanation, word for word 1`] = `
+
+unplugged
+  PC1 has no network cable plugged in.
+not configured
+  PC1 has no IP address. Set its IPv4 settings to DHCP (automatic) or enter a static address.
+address conflict
+  PC2 can't use 192.168.1.100 because PC1 already has that address (IP address conflict).
+no DHCP answer
+  PC1 only has a self-assigned 169.254.x.x address because no DHCP server answered. It has no default gateway, so it can't reach other networks.
+no gateway
+  PC1 has no default gateway, so it doesn't know where to send traffic for other networks.
+gateway on another network
+  PC1's default gateway 10.0.0.1 is not inside its own network 192.168.1.0/24. Check the IP address, subnet mask and gateway.
+gateway that doesn’t exist
+  PC1 sent the packet to its gateway 192.168.1.254, but nothing on its local network answered to that address.
+local address nobody has
+  PC1 looked for 192.168.1.77 on its local network (192.168.1.0/24), but no device with that address answered.
+Internet: unknown public address
+  Nothing on the Internet answered at 9.9.9.9. Try a known server such as 8.8.8.8 or 1.1.1.1.
+Internet: private address
+  The packet for 10.1.2.3 was sent out to the Internet, which can't deliver it: private addresses (10.x, 172.16–31.x, 192.168.x) only exist inside local networks. Does the router have an interface in 10.1.2.3's network?
+NAT off
+  The packet reached the Internet from the private address 192.168.1.100. Private addresses can't be used on the Internet — the router must translate them (NAT).
+router without Internet
+  Router has no route to 8.8.8.8. Its WAN (Internet) port has no working address — is it connected to the Internet?
+web server that isn’t one
+  Nothing at 8.8.8.8 is running a web server.
+Internet host refusing a port
+  8.8.8.8 refused the connection on port 25.
+not a DNS server (Internet)
+  93.184.216.34 is not a DNS server, so nobody answered the question.
+not a DNS server (computer)
+  PC (10.0.1.100) is not a DNS server, so nobody answered the question.
+router without a DNS service
+  Router (10.0.1.1) doesn't run a DNS service. Use a DNS server that does, such as 8.8.8.8 or 1.1.1.1.
+router without a port forward
+  Router received a connection for TCP port 80, but it has no port-forwarding rule sending that port to a server inside, so it refused it.
+service not running
+  Server (10.0.2.53) got the request, but nothing is listening on TCP port 80: its web server service isn't running. It is listening on port 445 (file sharing) and 53 (dns server).
+service not running, nothing listening
+  Server (10.0.2.53) got the request, but nothing is listening on TCP port 445: its file sharing service isn't running.
+SSH host firewall
+  Server runs SSH, but its own settings only accept logins from 10.0.2.0/24, and 10.0.1.100 isn't in that range. (This check happens on the server itself, so it works even inside one subnet, where the router never sees the traffic.)
+rule hides a permit
+  Router's access rules blocked TCP port 445 from 10.0.1.100 to 10.0.2.53. Rule 1 “deny any → 10.0.2.0/24 any” matched it. Rule 2 “permit any → 10.0.2.53 TCP 445” would have allowed it, but rule 1 comes first, and the first match wins.
+no rule matches (two near misses)
+  Router's access rules blocked TCP port 445 from 10.0.1.100 to 10.0.2.53. No rule matched, so the built-in “deny everything else” at the end of the list blocked it. Rule 1 “permit 10.0.9.0/24 → 10.0.2.53 TCP 445” didn't apply because the source 10.0.1.100 isn't in 10.0.9.0/24. Rule 2 “permit any → 10.0.2.53 TCP 80” didn't apply because it is for port 80 and this packet is for port 445.
+no rule matches (ping)
+  Router's access rules blocked ICMP (ping) from 10.0.1.100 to 10.0.2.53. No rule matched, so the built-in “deny everything else” at the end of the list blocked it. Rule 1 “permit any → 10.0.2.53 TCP 445” didn't apply because it is for TCP and this packet is ICMP.
+no DNS server set
+  PC has no DNS server set, so it can't turn names into IP addresses.
+internal name missing
+  No DNS server has a record for "nope.office". Internal names only work once someone adds them to the internal DNS server.
+internal name asked of public DNS
+  8.8.8.8 is a public DNS server on the Internet. It only knows public names, not internal ones like "files.office".
+public name missing
+  The DNS server says the name "nothing.example" doesn't exist. (In this game, try www.example.com.)
+DNS blocked by a rule
+  PC couldn't get an answer from its DNS server 10.0.2.53. Router's access rules blocked UDP port 53 from 10.0.1.100 to 10.0.2.53. No rule matched, so the built-in “deny everything else” at the end of the list blocked it. Rule 1 “permit any → any TCP 445” didn't apply because it is for TCP and this packet is UDP. Every name has to be looked up in DNS before anything else happens, so PC never even tried the real connection. Permit DNS (UDP port 53 to 10.0.2.53), or end the list with permit any → any.
+DNS server not running
+  PC couldn't get an answer from its DNS server 10.0.2.53. Server (10.0.2.53) is not a DNS server, so nobody answered the question.
+router relay with no DNS of its own
+  Router relays DNS questions to its own DNS server, but that failed. Router has no DNS server set, so it can't turn names into IP addresses.
+host-only network
+  Laptop's host-only network (192.168.56.0/24) is private to Laptop and its virtual machines. The hypervisor never routes it to any other network, including the Internet.
+a PC used as a router
+  PC2 received a packet for 8.8.8.8, but it isn't a router, so it dropped it.
+reply can’t get back (server without a gateway)
+  The request arrived, but the reply could not get back. Web has no default gateway, so it doesn't know where to send traffic for other networks.
+loop
+  The packet went round in a loop until it expired.
+reply to the wrong place
+  The reply arrived somewhere unexpected.
+unknown device
+  ? has no DNS server set, so it can't turn names into IP addresses.
+
+`;
+
+exports[`the route packets take: a catalogue of journeys 1`] = `
+
+PC to the Internet (NAT)
+  ok · sent 203.0.113.42 → 8.8.8.8:
+  request: PC1→Switch Switch→Router Router→Internet
+  hops: Router(192.168.1.1) Internet(203.0.113.1)
+  reply:   Internet→Router Router→Switch Switch→PC1
+PC to PC on one switch
+  ok · sent 192.168.1.100 → 192.168.1.101:
+  request: PC1→Switch Switch→PC2
+  hops: PC2(192.168.1.101)
+  reply:   PC2→Switch Switch→PC1
+PC to a server on another network (TCP 445)
+  ok · sent 10.0.1.100 → 10.0.2.53:445
+  request: PC→Router Router→Server
+  hops: Router(10.0.1.1) Server(10.0.2.53)
+  reply:   Server→Router Router→PC
+a customer opens port 8080, forwarded to port 80 inside
+  ok · sent 198.51.100.25 → 192.168.1.80:80
+  request: Internet→Router Router→Switch Switch→Web
+  hops: Router(203.0.113.42) Web(192.168.1.80)
+  forwarded by Router to 192.168.1.80
+  reply:   Web→Switch Switch→Router Router→Internet
+a customer tries port 9999 (no forward)
+  FAILED refused · sent 198.51.100.25 → 203.0.113.42:9999
+  request: Internet→Router
+  hops: Router(203.0.113.42)
+across a VLAN trunk
+  ok · sent 10.0.0.1 → 10.0.0.2:
+  request: A→S1 S1→S2 S2→B
+  hops: B(10.0.0.2)
+  reply:   B→S2 S2→S1 S1→A
+
+`;

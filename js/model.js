@@ -106,7 +106,7 @@
         locked: !!o.locked, lockedConfig: !!o.lockedConfig, fromPalette: !!o.fromPalette,
         tag: o.tag || null,
       };
-      if (o.config) merge(d.config, o.config);
+      merge(d.config, o.config);
       net.devices.push(d);
       return d;
     },

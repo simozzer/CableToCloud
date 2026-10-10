@@ -89,6 +89,15 @@ button.danger { background: transparent; border-color: #7f1d1d; color: var(--bad
 }
 #objectives li.done .tick { background: var(--good); border-color: var(--good); color: #052e1c; font-weight: 700; }
 #objectives li.done > span:last-child { color: var(--muted); }
+#objectives li.broken .tick { background: var(--bad); border-color: var(--bad); color: #fff; font-weight: 700; }
+.broken-note { display: block; color: var(--bad); font-size: 11.5px; margin-top: 2px; }
+.review { border: 1px solid var(--border); border-left: 4px solid var(--good); border-radius: 8px; padding: 4px 14px 8px; margin: 10px 0; text-align: left; }
+.review.has-notes { border-left-color: var(--warn); }
+.review ul { margin: 4px 0; padding-left: 20px; font-size: 13px; }
+.review li { margin: 4px 0; }
+.solution { text-align: left; }
+.solution ol, .solution ul { padding-left: 22px; }
+.solution li { margin: 5px 0; }
 #hint-box { margin-top: 10px; padding: 9px 11px; background: #1e293b; border-left: 3px solid var(--warn); border-radius: 6px; font-size: 13px; }
 
 /* ---------- Inspector ---------- */

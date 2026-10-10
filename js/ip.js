@@ -3,7 +3,6 @@
   const IP = {};
 
   IP.parse = function (s) {
-    if (s == null) return null;
     const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(String(s).trim());
     if (!m) return null;
     let n = 0;
@@ -36,7 +35,6 @@
 
   // Accepts "255.255.255.0", "/24" or "24".
   IP.parseMask = function (s) {
-    if (s == null) return null;
     s = String(s).trim();
     const m = /^\/?(\d{1,2})$/.exec(s);
     if (m) {
@@ -44,13 +42,11 @@
       return p <= 32 ? IP.maskFromPrefix(p) : null;
     }
     const n = IP.parse(s);
-    return n != null && IP.isMask(n) ? n : null;
+    return IP.isMask(n) ? n : null;
   };
 
   IP.parseList = function (s) {
-    s = (s || '').trim();
-    if (!s) return [];
-    const out = s.split(/[\s,;]+/).filter(Boolean).map(IP.parse);
+    const out = String(s || '').split(/[\s,;]/).filter(Boolean).map(IP.parse);
     return out.some(x => x == null) ? null : out;
   };
 

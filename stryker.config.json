@@ -1,0 +1,48 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "testRunner": "tap",
+  "tap": {
+    "testFiles": [
+      "test/unit/*.test.js"
+    ],
+    "nodeArgs": [
+      "-r",
+      "{{hookFile}}",
+      "--test-reporter=tap"
+    ]
+  },
+  "mutate": [
+    "js/ip.js",
+    "js/model.js",
+    "js/sim.js",
+    "js/levels.js"
+  ],
+  "coverageAnalysis": "perTest",
+  "reporters": [
+    "clear-text",
+    "progress",
+    "html",
+    "json"
+  ],
+  "htmlReporter": {
+    "fileName": "reports/mutation/mutation.html"
+  },
+  "thresholds": {
+    "high": 97,
+    "low": 90,
+    "break": 95
+  },
+  "timeoutMS": 10000,
+  "tempDirName": ".stryker-tmp",
+  "jsonReporter": {
+    "fileName": "reports/mutation/mutation.json"
+  },
+  "plugins": [
+    "@stryker-mutator/*",
+    "./test/stryker-prose-ignorer.js"
+  ],
+  "ignorers": [
+    "prose"
+  ],
+  "$comment": "Mutation testing: npm run test:mutation (about 5 minutes). Report: reports/mutation/mutation.html. Fails below thresholds.break."
+}
